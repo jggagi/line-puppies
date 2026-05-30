@@ -1,0 +1,7 @@
+{
+  "name": "Rent Scorer",
+  "emoji": "🏠",
+  "description": "上海租房评分器 — Shanghai Apartment Rental Scorer",
+  "type": "static",
+  "route": "/rent"
+}

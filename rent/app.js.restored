@@ -1,0 +1,167 @@
+// State Management
+let listings = [];
+let currentFilter = 'all';
+let checkedChecklistItems = {}; // { listingId: { itemId: true/false } }
+
+// Weights
+const WEIGHTS = {
+  a: 0.35, // 小区长期居住质量
+  b: 0.30, // 户型与室内生活质量
+  c: 0.15, // 租金、合同与性价比
+  d: 0.10, // 地段与生活便利
+  e: 0.10  // 风险与不确定性
+};
+
+// Default Listings Data (High Fidelity Mock)
+const DEFAULT_LISTINGS = [
+  {
+    id: "lst-SH30928372",
+    community: "上海绿城",
+    unit_id: "3室 / 12/28层 / 128㎡",
+    rent: 17800,
+    area_sqm: 128,
+    bedroom_count: 3,
+    has_independent_study: true,
+    floor: "12/28层",
+    orientation: "南北",
+    layout_comment: "标准的南北通透真三房，户型方正。北向次卧带有开阔的大飘窗，采光和通风条件优秀，可完美用作独立的 WFH 书房，工作环境静谧舒适。",
+    renovation: "精装",
+    noise_risk: "低噪音。位于小区腹地，无马路胎噪干扰",
+    greenery: "绿化率高达 45%，有开阔的中央大草坪与散步水景区，植物高低错落极为成熟",
+    car_pedestrian_separation: "完全人车分流，人行绿道完全无机动车占道现象，散步步行体验极佳",
+    property_management: "绿城自持品质物业，安保极其负责，公区地面保洁频率极高，绿化维护好",
+    community_atmosphere: "高档成熟自住社区，低密安静，邻里以高端白领及外籍家庭为主，整体低压稳定",
+      ]
+    }
+  ];
+  
+  let html = '';
+  const currentListingChecklist = checkedChecklistItems[selectedId] || {};
+  
+  checklistData.forEach(section => {
+    html += `
+      <div class="checklist-section">
+        <h4>${section.category}</h4>
+    `;
+    
+    section.items.forEach(item => {
+      const isChecked = currentListingChecklist[item.id] || false;
+      html += `
+        <div class="checklist-item ${isChecked ? 'checked' : ''}" onclick="toggleChecklistItem('${selectedId}', '${item.id}')">
+          <input type="checkbox" class="checklist-check" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); toggleChecklistItem('${selectedId}', '${item.id}')">
+          <span>${escapeHtml(item.text)}</span>
+        </div>
+      `;
+    });
+    
+    html += `</div>`;
+  });
+  
+  renderArea.innerHTML = html;
+}
+
+// Toggle checklist item status
+window.toggleChecklistItem = function(listingId, itemId) {
+  if (!checkedChecklistItems[listingId]) {
+    checkedChecklistItems[listingId] = {};
+  }
+  
+  checkedChecklistItems[listingId][itemId] = !checkedChecklistItems[listingId][itemId];
+  saveState();
+  renderChecklist();
+};
+
+// HTML escaping helper to prevent XSS
+function escapeHtml(text) {
+  if (typeof text !== 'string') return text;
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Add/Edit listing form submit
+document.getElementById('listing-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const editIndex = parseInt(document.getElementById('edit-index').value);
+  
+  const data = {
+    id: editIndex >= 0 ? listings[editIndex].id : "lst-" + Date.now(),
+    community: document.getElementById('f-community').value.trim(),
+    unit_id: document.getElementById('f-unit-id').value.trim(),
+    detail_url: document.getElementById('f-detail-url').value.trim(),
+    rent: parseInt(document.getElementById('f-rent').value),
+    area_sqm: parseInt(document.getElementById('f-area').value),
+    bedroom_count: parseInt(document.getElementById('f-bedroom').value),
+    has_independent_study: document.getElementById('f-bedroom').value >= 3, // True if >= 3 bed or manually true
+    floor: document.getElementById('f-floor').value.trim(),
+    orientation: document.getElementById('f-orientation').value.trim(),
+    layout_comment: document.getElementById('f-layout-comment').value.trim(),
+    renovation: document.getElementById('f-renovation').value.trim(),
+    lease_terms: document.getElementById('f-lease-terms').value.trim(),
+    viewing_notes: document.getElementById('f-viewing-notes').value.trim(),
+    
+    // Sliders
+    dim_a: parseInt(document.getElementById('f-dim-a').value),
+    dim_b: parseInt(document.getElementById('f-dim-b').value),
+    dim_c: parseInt(document.getElementById('f-dim-c').value),
+    dim_d: parseInt(document.getElementById('f-dim-d').value),
+          renderReport();
+          renderChecklist();
+          
+          alert('数据覆盖并还原成功！');
+        }
+      } else {
+        alert('文件格式错误！导入的JSON必须是房源数组。');
+      }
+    } catch(err) {
+      alert('解析JSON文件失败，请确认文件是否完整。');
+    }
+  };
+  
+  fileReader.readAsText(e.target.files[0]);
+  // Reset input so same file can be imported again
+  e.target.value = '';
+});
+
+// Data Management: Data Wipe
+document.getElementById('btn-reset-data').addEventListener('click', () => {
+  if (confirm('🚨 警告：这会清空本地所有房源数据！确认继续吗？')) {
+    listings = [];
+    checkedChecklistItems = {};
+    saveState();
+    
+    renderDashboard();
+    renderCompareMatrix();
+    renderReport();
+    renderChecklist();
+    
+    alert('已成功清空所有本地存储数据。');
+  }
+});
+
+// Data Management: Load Defaults
+document.getElementById('btn-load-defaults').addEventListener('click', () => {
+  if (confirm('这会重置当前列表并重新加载5个精选默认评测案例（如：上海绿城、仁恒河滨城等）。确认继续吗？')) {
+    listings = [...DEFAULT_LISTINGS];
+    checkedChecklistItems = {};
+    saveState();
+    
+    renderDashboard();
+    renderCompareMatrix();
+    renderReport();
+    renderChecklist();
+    
+    alert('默认评测案例加载成功！');
+  }
+});
+
+// Initialize App
+loadState();
+renderDashboard();
+renderCompareMatrix();
+renderReport();
+renderChecklist();

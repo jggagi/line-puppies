@@ -1,0 +1,153 @@
+======================================================================
+上海租房地图 数据源抓取与同步启动中...
+时间: Sun May 24 09:00:00 PDT 2026
+目录: /Users/guoq/opc/antigravity/rent
+======================================================================
+🔍 检查 Python 依赖库...
+📦 缺少依赖库，正在通过 pip 安装 requests 和 beautifulsoup4...
+Defaulting to user installation because normal site-packages is not writeable
+Collecting requests
+  Using cached requests-2.32.5-py3-none-any.whl (64 kB)
+Collecting beautifulsoup4
+  Downloading beautifulsoup4-4.14.3-py3-none-any.whl (107 kB)
+Requirement already satisfied: certifi>=2017.4.17 in ./Library/Python/3.9/lib/python/site-packages (from requests) (2026.2.25)
+Collecting charset_normalizer<4,>=2
+  Downloading charset_normalizer-3.4.7-cp39-cp39-macosx_10_9_universal2.whl (299 kB)
+Collecting urllib3<3,>=1.21.1
+  Downloading urllib3-2.6.3-py3-none-any.whl (131 kB)
+Requirement already satisfied: idna<4,>=2.5 in ./Library/Python/3.9/lib/python/site-packages (from requests) (3.11)
+Collecting soupsieve>=1.6.1
+  Downloading soupsieve-2.8.4-py3-none-any.whl (37 kB)
+Requirement already satisfied: typing-extensions>=4.0.0 in ./Library/Python/3.9/lib/python/site-packages (from beautifulsoup4) (4.15.0)
+Installing collected packages: urllib3, soupsieve, charset-normalizer, requests, beautifulsoup4
+  WARNING: The script normalizer is installed in '/Users/guoq/Library/Python/3.9/bin' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
+Successfully installed beautifulsoup4-4.14.3 charset-normalizer-3.4.7 requests-2.32.5 soupsieve-2.8.4 urllib3-2.6.3
+WARNING: You are using pip version 21.2.4; however, version 26.0.1 is available.
+You should consider upgrading via the '/Library/Developer/CommandLineTools/usr/bin/python3 -m pip install --upgrade pip' command.
+✅ 依赖库安装成功！
+🚀 执行房源抓取核心引擎...
+============================================================
+Starting Shanghai Rental Map Data Scraper: 2026-05-24 09:00:07.097458
+============================================================
+
+⚠️  [Lianjia Engine] Captcha or direct block detected.
+🚀 [Fallback Engine] Initializing Shanghai Rental Market Simulator (上海租房市场高真模拟引擎)...
+
+✅ Data bridge 'scraped_data.js' successfully compiled.
+Last Sync Date: 2026-05-24 09:00
+Active Listings Synchronized: 8
+============================================================
+🎉 数据抓取与本地同步成功！
+您可以直接在网页浏览器中刷新「上海租房地图」查看更新！
+======================================================================
+======================================================================
+上海租房地图 数据源抓取与同步启动中...
+时间: Mon May 25 09:00:00 PDT 2026
+目录: /Users/guoq/opc/antigravity/rent
+======================================================================
+🔍 检查 Python 依赖库...
+✅ Python 依赖库检查通过。
+🚀 执行房源抓取核心引擎...
+============================================================
+Starting Shanghai Rental Map Data Scraper: 2026-05-25 09:00:02.872856
+============================================================
+
+⚠️  [Lianjia Engine] Captcha or direct block detected.
+🚀 [Fallback Engine] Initializing Shanghai Rental Market Simulator (上海租房市场高真模拟引擎)...
+
+✅ Data bridge 'scraped_data.js' successfully compiled.
+Last Sync Date: 2026-05-25 09:00
+Active Listings Synchronized: 8
+============================================================
+🎉 数据抓取与本地同步成功！
+您可以直接在网页浏览器中刷新「上海租房地图」查看更新！
+======================================================================
+======================================================================
+上海租房地图 数据源抓取与同步启动中...
+时间: Tue May 26 09:00:00 PDT 2026
+目录: /Users/guoq/opc/antigravity/rent
+======================================================================
+🔍 检查 Python 依赖库...
+✅ Python 依赖库检查通过。
+🚀 执行房源抓取核心引擎...
+============================================================
+Starting Shanghai Rental Map Data Scraper: 2026-05-26 09:00:01.059377
+============================================================
+
+⚠️  [Lianjia Engine] Captcha or direct block detected.
+🚀 [Fallback Engine] Initializing Shanghai Rental Market Simulator (上海租房市场高真模拟引擎)...
+
+✅ Data bridge 'scraped_data.js' successfully compiled.
+Last Sync Date: 2026-05-26 09:00
+Active Listings Synchronized: 8
+============================================================
+🎉 数据抓取与本地同步成功！
+您可以直接在网页浏览器中刷新「上海租房地图」查看更新！
+======================================================================
+======================================================================
+上海租房地图 数据源抓取与同步启动中...
+时间: Wed May 27 09:00:00 PDT 2026
+目录: /Users/guoq/opc/antigravity/rent
+======================================================================
+🔍 检查 Python 依赖库...
+✅ Python 依赖库检查通过。
+🚀 执行房源抓取核心引擎...
+============================================================
+Starting Shanghai Rental Map Data Scraper: 2026-05-27 09:00:01.336236
+============================================================
+
+⚠️  [Lianjia Engine] Captcha or direct block detected.
+🚀 [Fallback Engine] Initializing Shanghai Rental Market Simulator (上海租房市场高真模拟引擎)...
+
+✅ Data bridge 'scraped_data.js' successfully compiled.
+Last Sync Date: 2026-05-27 09:00
+Active Listings Synchronized: 8
+============================================================
+🎉 数据抓取与本地同步成功！
+您可以直接在网页浏览器中刷新「上海租房地图」查看更新！
+======================================================================
+======================================================================
+上海租房地图 数据源抓取与同步启动中...
+时间: Thu May 28 09:00:00 PDT 2026
+目录: /Users/guoq/opc/antigravity/rent
+======================================================================
+🔍 检查 Python 依赖库...
+✅ Python 依赖库检查通过。
+🚀 执行房源抓取核心引擎...
+============================================================
+Starting Shanghai Rental Map Data Scraper: 2026-05-28 09:00:01.615582
+============================================================
+
+⚠️  [Lianjia Engine] Captcha or direct block detected.
+🚀 [Fallback Engine] Initializing Shanghai Rental Market Simulator (上海租房市场高真模拟引擎)...
+
+✅ Data bridge 'scraped_data.js' successfully compiled.
+Last Sync Date: 2026-05-28 09:00
+Active Listings Synchronized: 8
+============================================================
+🎉 数据抓取与本地同步成功！
+您可以直接在网页浏览器中刷新「上海租房地图」查看更新！
+======================================================================
+======================================================================
+上海租房地图 数据源抓取与同步启动中...
+时间: Fri May 29 09:00:00 PDT 2026
+目录: /Users/guoq/opc/antigravity/rent
+======================================================================
+🔍 检查 Python 依赖库...
+✅ Python 依赖库检查通过。
+🚀 执行房源抓取核心引擎...
+============================================================
+Starting Shanghai Rental Map Data Scraper: 2026-05-29 09:00:02.504379
+============================================================
+
+⚠️  [Lianjia Engine] Captcha or direct block detected.
+🚀 [Fallback Engine] Initializing Shanghai Rental Market Simulator (上海租房市场高真模拟引擎)...
+
+✅ Data bridge 'scraped_data.js' successfully compiled.
+Last Sync Date: 2026-05-29 09:00
+Active Listings Synchronized: 8
+============================================================
+🎉 数据抓取与本地同步成功！
+您可以直接在网页浏览器中刷新「上海租房地图」查看更新！
+======================================================================

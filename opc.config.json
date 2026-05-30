@@ -1,0 +1,7 @@
+{
+  "name": "Line Puppies",
+  "emoji": "🐶",
+  "description": "线条小狗的恋爱日记 — Couple Puppies' Love Simulator",
+  "type": "static",
+  "route": "/puppies"
+}

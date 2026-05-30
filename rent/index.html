@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上海租房地图 | 3-5年长期居住决策评分器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container header-wrap">
+      <div class="logo">
+        <div class="logo-icon">🗺️</div>
+        <div class="logo-text">
+          <h1 style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            上海租房地图
+            <span id="sync-indicator" style="font-size: 10px; font-weight: 500; padding: 2px 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; color: var(--accent-success); display: none;"></span>
+          </h1>
+          <p>3–5年长期居住及居家办公(WFH)理性决策评分引擎</p>
+        </div>
+      </div>
+      
+      <!-- Dynamic Stats Bar -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span>总候选房源:</span>
+          <span class="stat-value" id="stat-total">0</span>
+        </div>
+        <div class="stat-item">
+          <span>最高评分:</span>
+          <span class="stat-value" id="stat-top">0</span>
+        </div>
+        <div class="stat-item">
+          <span>红线淘汰:</span>
+          <span class="stat-value" id="stat-eliminated" style="color: var(--accent-danger);">0</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    
+    <!-- Tab Controls -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-dashboard" role="tab">📊 房源决策看板</button>
+      <button class="tab-btn" data-tab="tab-compare" role="tab">⚖️ 维度对比矩阵</button>
+      <button class="tab-btn" data-tab="tab-report" role="tab">📝 决策报告生成</button>
+      <button class="tab-btn" data-tab="tab-checklist" role="tab">🔍 线下看房清单</button>
+      <button class="tab-btn" data-tab="tab-data" role="tab">⚙️ 数据中心</button>
+    </nav>
+
+    <!-- Tab 1: Dashboard -->
+    <section id="tab-dashboard" class="tab-content active" role="tabpanel">
+      <div class="dashboard-actions">
+        <div class="filter-bar" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <button class="filter-btn active" data-filter="all">全部房源</button>
+          <button class="filter-btn" data-filter="S-A">S/A 强烈推荐</button>
+          <button class="filter-btn" data-filter="B">B 备选候选</button>
+          <button class="filter-btn" data-filter="D">D 红线淘汰</button>
+          
+          <!-- 预算筛选 (Budget Filter) -->
+          <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border-glass); padding-left: 15px; margin-left: 5px;">
+            <label for="budget-filter-input" style="font-size: 13px; color: var(--text-secondary); white-space: nowrap;">💰 预算上限:</label>
+            <input type="number" id="budget-filter-input" class="input-control" style="padding: 6px 12px; font-size: 13px; width: 100px; height: 34px;" placeholder="不限金额">
+            <span style="font-size: 12px; color: var(--text-muted); white-space: nowrap;">元/月</span>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- Add / Edit Form Drawer (Collapsible) -->
+      <div class="card" id="listing-form-card" style="display: none;">
+        <h2 id="form-title" style="margin-bottom: 20px;">房源定制评测与看房备注</h2>
+        <form id="listing-form">
+          <input type="hidden" id="edit-index" value="-1">
+          
+          <div class="form-grid">
+            <!-- Basic Info Left (Read-Only Dynamic Panel) -->
+            <div>
+              <h3 style="font-size: 15px; color: var(--accent-primary); margin-bottom: 15px; border-left: 3px solid var(--accent-primary); padding-left: 8px;">已同步房源信息 (只读)</h3>
+              
+              <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-glass); border-radius: 12px; padding: 20px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <div>🏢 <strong>小区名称:</strong> <span id="view-community" style="color: var(--text-primary); font-weight: 600;">-</span></div>
+                <div>📍 <strong>房源规格:</strong> <span id="view-unit-id" style="color: var(--text-primary); font-weight: 500;">-</span></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>💰 <strong>月租金:</strong> <span id="view-rent" style="color: var(--accent-primary); font-weight: 700;">-</span> 元/月</div>
+                  <div>📐 <strong>建筑面积:</strong> <span id="view-area" style="color: var(--text-primary); font-weight: 500;">-</span> ㎡</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>🛏️ <strong>房间数量:</strong> <span id="view-bedroom" style="color: var(--text-primary); font-weight: 500;">-</span> 房</div>
+                  <div>🧭 <strong>房屋朝向:</strong> <span id="view-orientation" style="color: var(--text-primary); font-weight: 500;">-</span></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>🏢 <strong>所在楼层:</strong> <span id="view-floor" style="color: var(--text-primary); font-weight: 500;">-</span></div>
+                  <div>🎨 <strong>装修状态:</strong> <span id="view-renovation" style="color: var(--text-primary); font-weight: 500;">-</span></div>
+                </div>
+                <div>🔗 <strong>房源链接:</strong> <a id="view-detail-url" href="#" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 500; word-break: break-all;">🔗 链家详情单页</a></div>
+              </div>
+
+              <!-- Manual Curation Notes -->
+              <h3 style="font-size: 15px; color: var(--accent-primary); margin-bottom: 15px; border-left: 3px solid var(--accent-primary); padding-left: 8px;">我的定制评测与备注</h3>
+
+              <div class="form-group">
+                <label for="f-layout-comment">户型与室内评价 (WFH 舒适度)</label>
+                <textarea id="f-layout-comment" class="input-control" placeholder="评价户型的宽敞度、是否有大采光窗、功能分区或书房高度"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="f-lease-terms">合同谈判与特殊条款约定</label>
+                <textarea id="f-lease-terms" class="input-control" style="min-height: 60px;" placeholder="记录合同付款方式约定，如：付三押一，承诺3年内不涨租，设备自然折旧维修责任划分"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="f-viewing-notes">看房实地备注</label>
+                <textarea id="f-viewing-notes" class="input-control" placeholder="记录实地看房时的噪音、采光、层高或其它特殊瑕疵感受"></textarea>
+              </div>
+            </div>
+
+            <!-- Scoring Sliders Right -->
+            <div>
+              <h3 style="font-size: 15px; color: var(--accent-success); margin-bottom: 15px; border-left: 3px solid var(--accent-success); padding-left: 8px;">长期居住与 WFH 体验量化打分 (1-10分)</h3>
+
+              <!-- Dimension A -->
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span class="slider-title">A. 小区长期居住质量 (权重 35%)</span>
+                  <span class="slider-val"><span id="val-dim-a">8</span>/10</span>
+                </div>
+                <p class="slider-desc">包含：绿化成熟度、安静度、物业服务、公区维护、社区车人分流、内部道路散步感。</p>
+                <input type="range" id="f-dim-a" class="range-slider" min="1" max="10" step="1" value="8">
+              </div>
+
+              <!-- Dimension B -->
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span class="slider-title">B. 户型与室内生活质量 (权重 30%)</span>
+                  <span class="slider-val"><span id="val-dim-b">8</span>/10</span>
+                </div>
+                <p class="slider-desc">包含：真三房舒适度、采光朝向、层高压抑感、噪音控制、独立舒适书房、收纳厨卫条件。</p>
+                <input type="range" id="f-dim-b" class="range-slider" min="1" max="10" step="1" value="8">
+              </div>
+
+              <!-- Dimension C -->
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span class="slider-title">C. 租金、合同与性价比 (权重 15%)</span>
+                  <span class="slider-val"><span id="val-dim-c">8</span>/10</span>
+                </div>
+                <p class="slider-desc">包含：月租金合理度、合同条款友好度、是否接受3-5年稳定长租、未来涨租收房风险。</p>
+                <input type="range" id="f-dim-c" class="range-slider" min="1" max="10" step="1" value="8">
+              </div>
+
+              <!-- Dimension D -->
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span class="slider-title">D. 地段与生活便利 (权重 10%)</span>
+                  <span class="slider-val"><span id="val-dim-d">7</span>/10</span>
+                </div>
+                <p class="slider-desc">包含：日常商业配套、周边公园绿地、地铁/打车便利度、通勤接受度。</p>
+                <input type="range" id="f-dim-d" class="range-slider" min="1" max="10" step="1" value="7">
+              </div>
+
+              <!-- Dimension E -->
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span class="slider-title">E. 规避风险与高确定性 (权重 10%)</span>
+                  <span class="slider-val"><span id="val-dim-e">8</span>/10</span>
+                </div>
+                <p class="slider-desc">包含：无楼上邻居噪音/漏水隐患、装修折旧率低、房东高信誉、无变卖房源风险。</p>
+                <input type="range" id="f-dim-e" class="range-slider" min="1" max="10" step="1" value="8">
+              </div>
+
+              <!-- Red Lines Section -->
+              <h3 style="font-size: 15px; color: var(--accent-danger); margin-top: 25px; margin-bottom: 15px; border-left: 3px solid var(--accent-danger); padding-left: 8px;">一票否决红线检查 (开启即视为不满足、一票淘汰)</h3>
+              
+              <div class="toggle-group danger">
+                <div class="toggle-text">
+                  <span class="toggle-label">红线 1：不是真三房 / 缺乏独立书房</span>
+                  <span class="toggle-desc">无法支撑长期居家办公或布局狭窄压抑</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="rl-not-three-bed">
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+
+              <div class="toggle-group danger">
+                <div class="toggle-text">
+                  <span class="toggle-label">红线 2：小区人车混杂、步行感差</span>
+                  <span class="toggle-desc">道路停满车辆，尾气与噪音大，无散步感</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="rl-car-messy">
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+
+              <div class="toggle-group danger">
+                <div class="toggle-text">
+                  <span class="toggle-label">红线 3：长期 WFH 环境极其不适</span>
+                  <span class="toggle-desc">书房采光极差、大面积噪音干扰、空间压抑</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="rl-wfh-bad">
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+
+              <div class="toggle-group danger">
+                <div class="toggle-text">
+                  <span class="toggle-label">红线 4：物业管理极其糟糕</span>
+                  <span class="toggle-desc">垃圾乱堆、公区破败、安保形同虚设</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="rl-property-bad">
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+
+              <div class="toggle-group danger">
+                <div class="toggle-text">
+                  <span class="toggle-label">红线 5：租期极不稳定</span>
+                  <span class="toggle-desc">房东随时计划卖房或租期短于1年，不能签3年</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="rl-lease-unstable">
+                  <span class="slider-toggle"></span>
+                </label>
+              </div>
+
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 20px;">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-form">取消</button>
+            <button type="submit" class="btn btn-primary">保存房源数据</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Listings Render Area -->
+      <div class="listings-grid" id="listings-render-container">
+        <!-- Rendered dynamically in JS -->
+      </div>
+    </section>
+
+    <!-- Tab 2: Comparison Matrix -->
+    <section id="tab-compare" class="tab-content" role="tabpanel">
+      <div class="card">
+        <h2 style="margin-bottom: 20px;">维度对比矩阵 (侧边横向比较)</h2>
+        <div class="table-responsive">
+          <table class="compare-table" id="compare-table-el">
+            <!-- Rendered dynamically in JS -->
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Report -->
+    <section id="tab-report" class="tab-content" role="tabpanel">
+      <div class="report-grid">
+        <!-- Left Side: Copyable Markdown -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>决策报告 Markdown 生成器</h2>
+            <button class="btn btn-primary" id="btn-copy-report">📋 一键复制报告</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">
+            基于您打分和红线筛选后的所有房源，系统已自动按决策逻辑和权重模型分析完毕。双击下方文本框可快速全选并复制到您本地文档中。
+          </p>
+          <div class="report-markdown" id="report-md-content" contenteditable="false">
+            <!-- Generated dynamically -->
+          </div>
+        </div>
+
+        <!-- Right Side: Explanation of Trade-offs -->
+        <div>
+          <div class="card">
+            <h3 style="font-size: 16px; color: var(--accent-success); margin-bottom: 15px;">🎯 理性抉择提示</h3>
+            <ul style="padding-left: 20px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px;">
+              <li>
+                <strong style="color: var(--text-primary);">高权重优先 (小区&户型占65%)</strong>：长期生活质量几乎全部由“社区步行绿化”和“室内WFH独立书房舒适度”决定，若某房源小区环境一流，但书房为“伪三房”或压抑，系统已执行降分和红线规避。
+              </li>
+              <li>
+                <strong style="color: var(--text-primary);">红线严控</strong>：在3-5年的长期租房中，任何红线（例如人车混行杂乱、物业极度脏乱、租期极不稳定）都会在漫长生活中被无限放大，触发红线的房源已自动被直接规避为级别D。
+              </li>
+              <li>
+                <strong style="color: var(--text-primary);">溢价与Willingness-to-pay</strong>：租金权重虽然仅占15%，但对每月支出的影响是刚性的。在S级和A级之间，需重点衡量溢价是否确实换取了匹配的“每日散步感”或“无噪音打扰的书房环境”。
+              </li>
+            </ul>
+          </div>
+          
+          <div class="card">
+            <h3 style="font-size: 16px; color: var(--accent-primary); margin-bottom: 15px;">💡 关于小区梯队默认印象</h3>
+            <ul style="padding-left: 20px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px;">
+              <li>
+                <strong style="color: var(--text-primary);">第一梯队：上海绿城 / 仁恒河滨城</strong><br>
+                上海绿城绿化和安静氛围极佳，社区生活感成熟；仁恒河滨城地段优渥，国际社区氛围浓，但需防范高容积率下的公区拥挤感。
+              </li>
+              <li>
+                <strong style="color: var(--text-primary);">第二梯队：爱家亚洲花园 / 涵合园</strong><br>
+                爱家较为现代但需检验公区与人车分流；涵合园容积率极低，需确认实际物业公区维护是否退化。
+              </li>
+              <li>
+                <strong style="color: var(--text-primary);">待考察：锦绣满堂南区</strong><br>
+                未看过的房源，不可提前悲观，需去现场重点实测散步路线和道路车辆管理。
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: Site Viewing Checklist -->
+    <section id="tab-checklist" class="tab-content" role="tabpanel">
+      <div class="checklist-container">
+        <div class="card">
+          <div class="checklist-header">
+            <div>
+              <h2>线下实地看房核查清单 (Checklist)</h2>
+              <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">线下实地看房时，用手机打开此页面，现场核查细节并点击打勾，规避隐性风险。</p>
+            </div>
+            <div>
+              <select id="checklist-selector" class="input-control" style="padding: 6px 12px; font-size: 13px;">
+                <!-- Filled by JS -->
+              </select>
+            </div>
+          </div>
+
+          <div id="checklist-render-area">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 5: Data Center -->
+    <section id="tab-data" class="tab-content" role="tabpanel">
+      <div class="card" style="max-width: 700px; margin: 0 auto;">
+        <h2 style="margin-bottom: 20px; text-align: center;">数据管理中心</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); text-align: center; margin-bottom: 30px;">
+          “上海租房地图”所有数据完全保存在您本地的浏览器 (LocalStorage) 中，安全私密，不经过任何服务器。<br>
+          您可以在此将数据导出为 <code>listings.json</code> 备份，或从备份中导入恢复。
+        </p>
+
+        <div class="form-grid" style="grid-template-columns: 1fr; gap: 20px;">
+          <!-- Export -->
+          <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-glass); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <div style="font-size: 32px;">📥</div>
+            <h3 style="font-size: 16px;">备份当前全部房源</h3>
+            <p style="font-size: 12px; color: var(--text-muted); text-align: center;">将目前录入的所有房源导出为 JSON 文件，用于在其他浏览器上同步或存档。</p>
+            <button class="btn btn-primary" id="btn-export-data">导出 listings.json</button>
+          </div>
+
+          <!-- Import -->
+          <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-glass); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+            <div style="font-size: 32px;">📤</div>
+            <h3 style="font-size: 16px;">恢复/导入房源备份</h3>
+            <p style="font-size: 12px; color: var(--text-muted); text-align: center;">选择电脑中的 JSON 备份文件，合并或覆盖当前列表。</p>
+            <input type="file" id="import-file-input" style="display: none;" accept=".json">
+            <button class="btn btn-secondary" onclick="document.getElementById('import-file-input').click()">选择备份文件导入</button>
+          </div>
+
+          <!-- Danger Zone -->
+          <div style="background: rgba(239, 68, 68, 0.02); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 10px;">
+            <div style="font-size: 32px;">⚠️</div>
+            <h3 style="font-size: 16px; color: var(--accent-danger);">危险区域</h3>
+            <p style="font-size: 12px; color: var(--text-muted); text-align: center;">清空本地所有房源数据。建议操作前先导出备份。</p>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-danger" id="btn-reset-data">清空所有数据</button>
+              <button class="btn btn-secondary" id="btn-load-defaults">重置并加载默认评测案例</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script src="scraped_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
