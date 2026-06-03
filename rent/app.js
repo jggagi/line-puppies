@@ -12,6 +12,20 @@ const WEIGHTS = {
   e: 0.10  // 风险与不确定性
 };
 
+// Community Ecological Data Mapping (High Fidelity Shanghai Indicators)
+const COMMUNITY_METRICS = {
+  "上海绿城": { greenery_rate: 0.45, plot_ratio: 2.2, building_density: 0.25 },
+  "仁恒河滨城": { greenery_rate: 0.60, plot_ratio: 2.7, building_density: 0.18 },
+  "香梅花园": { greenery_rate: 0.50, plot_ratio: 1.8, building_density: 0.20 },
+  "陆家嘴中央公寓": { greenery_rate: 0.40, plot_ratio: 2.1, building_density: 0.22 },
+  "联洋年华": { greenery_rate: 0.40, plot_ratio: 2.0, building_density: 0.23 },
+  "爱家亚洲花园": { greenery_rate: 0.35, plot_ratio: 2.6, building_density: 0.26 },
+  "涵合园": { greenery_rate: 0.50, plot_ratio: 0.9, building_density: 0.15 },
+  "锦绣满堂": { greenery_rate: 0.38, plot_ratio: 2.3, building_density: 0.24 },
+  "水清木华": { greenery_rate: 0.28, plot_ratio: 2.5, building_density: 0.28 }
+};
+
+
 // Default Listings Data (High Fidelity Mock)
 const DEFAULT_LISTINGS = [
   {
@@ -301,6 +315,13 @@ function determineGrade(listing, score) {
 
 // Save & Load State
 function saveState() {
+  // Ensure every listing is fully populated with community ecological metrics
+  listings.forEach(l => {
+    const metrics = COMMUNITY_METRICS[l.community] || { greenery_rate: 0.35, plot_ratio: 2.2, building_density: 0.23 };
+    l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
+    l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
+    l.building_density = l.building_density || metrics.building_density;
+  });
   localStorage.setItem('sh_rental_map_listings', JSON.stringify(listings));
   localStorage.setItem('sh_rental_map_checklist', JSON.stringify(checkedChecklistItems));
   updateStats();
@@ -352,6 +373,23 @@ function loadState() {
       }
     });
     
+    // Inject and align community metrics dynamically on all active listings
+    listings.forEach(l => {
+      const metrics = COMMUNITY_METRICS[l.community] || { greenery_rate: 0.35, plot_ratio: 2.2, building_density: 0.23 };
+      l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
+      l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
+      l.building_density = l.building_density || metrics.building_density;
+    });
+
+    saveState();
+  } else {
+    // If no sync happened but loaded from storage, still align metrics
+    listings.forEach(l => {
+      const metrics = COMMUNITY_METRICS[l.community] || { greenery_rate: 0.35, plot_ratio: 2.2, building_density: 0.23 };
+      l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
+      l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
+      l.building_density = l.building_density || metrics.building_density;
+    });
     saveState();
   }
 }
@@ -485,6 +523,12 @@ function renderDashboard() {
         <div class="detail-item">🏢 <strong>楼层:</strong> ${escapeHtml(listing.floor)}</div>
         <div class="detail-item">🧭 <strong>朝向:</strong> ${escapeHtml(listing.orientation)}</div>
         <div class="detail-item">🎨 <strong>装修:</strong> ${escapeHtml(listing.renovation)}</div>
+      </div>
+      
+      <div class="property-ecology-badges" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; margin-top: -4px;">
+        <div class="badge-ecology green" title="小区成熟绿化率">🌳 绿化 ${Math.round((listing.greenery_rate || 0.35) * 100)}%</div>
+        <div class="badge-ecology purple" title="小区开发容积率">🏢 容积率 ${(listing.plot_ratio || 2.2).toFixed(1)}</div>
+        <div class="badge-ecology gold" title="建筑基底密度">📐 密度 ${Math.round((listing.building_density || 0.23) * 100)}%</div>
       </div>
       
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
@@ -621,6 +665,107 @@ function renderCompareMatrix() {
     rowHtml += '</tr>';
     table.innerHTML += rowHtml;
   });
+}
+
+// Render Ecological Visualization (Vanilla CSS horizontal charts)
+function renderVisualization() {
+  const containerGreenery = document.getElementById('chart-greenery');
+  const containerPlotRatio = document.getElementById('chart-plot-ratio');
+  const containerDensity = document.getElementById('chart-density');
+  
+  if (!containerGreenery || !containerPlotRatio || !containerDensity) return;
+  
+  containerGreenery.innerHTML = '';
+  containerPlotRatio.innerHTML = '';
+  containerDensity.innerHTML = '';
+  
+  // Find top recommended community (highest score among non-eliminated ones)
+  let topCommunity = null;
+  const validListings = listings.filter(l => {
+    const s = calculateScore(l);
+    return determineGrade(l, s) !== 'D';
+  }).sort((a, b) => {
+    return calculateScore(b) - calculateScore(a);
+  });
+  
+  if (validListings.length > 0) {
+    topCommunity = validListings[0].community;
+  }
+  
+  // Render charts for each community in COMMUNITY_METRICS
+  Object.keys(COMMUNITY_METRICS).forEach(name => {
+    const metrics = COMMUNITY_METRICS[name];
+    const isHighlighted = (name === topCommunity);
+    const rowClass = `chart-row ${isHighlighted ? 'highlighted' : ''}`;
+    
+    // 1. greenery rate (0% to 60%)
+    const greeneryPct = Math.round(metrics.greenery_rate * 100);
+    const greeneryBarPct = Math.min(100, Math.round((metrics.greenery_rate / 0.60) * 100));
+    
+    const rowGreenery = document.createElement('div');
+    rowGreenery.className = rowClass;
+    rowGreenery.innerHTML = `
+      <div class="chart-row-meta">
+        <span class="chart-row-label">${escapeHtml(name)}</span>
+        <span class="chart-row-val">${greeneryPct}%</span>
+      </div>
+      <div class="chart-bar-container">
+        <div class="chart-bar-track">
+          <div class="chart-bar-fill bar-greenery" data-width="${greeneryBarPct}%" style="width: 0%;"></div>
+        </div>
+      </div>
+    `;
+    containerGreenery.appendChild(rowGreenery);
+    
+    // 2. plot ratio (0.0 to 3.0)
+    const ratioVal = metrics.plot_ratio.toFixed(1);
+    const ratioBarPct = Math.min(100, Math.round((metrics.plot_ratio / 3.0) * 100));
+    
+    const rowPlotRatio = document.createElement('div');
+    rowPlotRatio.className = rowClass;
+    rowPlotRatio.innerHTML = `
+      <div class="chart-row-meta">
+        <span class="chart-row-label">${escapeHtml(name)}</span>
+        <span class="chart-row-val">${ratioVal}</span>
+      </div>
+      <div class="chart-bar-container">
+        <div class="chart-bar-track">
+          <div class="chart-bar-fill bar-plot-ratio" data-width="${ratioBarPct}%" style="width: 0%;"></div>
+        </div>
+      </div>
+    `;
+    containerPlotRatio.appendChild(rowPlotRatio);
+    
+    // 3. building density (0% to 30%)
+    const densityPct = Math.round(metrics.building_density * 100);
+    const densityBarPct = Math.min(100, Math.round((metrics.building_density / 0.30) * 100));
+    
+    const rowDensity = document.createElement('div');
+    rowDensity.className = rowClass;
+    rowDensity.innerHTML = `
+      <div class="chart-row-meta">
+        <span class="chart-row-label">${escapeHtml(name)}</span>
+        <span class="chart-row-val">${densityPct}%</span>
+      </div>
+      <div class="chart-bar-container">
+        <div class="chart-bar-track">
+          <div class="chart-bar-fill bar-density" data-width="${densityBarPct}%" style="width: 0%;"></div>
+        </div>
+      </div>
+    `;
+    containerDensity.appendChild(rowDensity);
+  });
+  
+  // Trigger growing width transitions
+  setTimeout(() => {
+    const bars = document.querySelectorAll('.chart-bar-fill');
+    bars.forEach(bar => {
+      const targetWidth = bar.getAttribute('data-width');
+      if (targetWidth) {
+        bar.style.width = targetWidth;
+      }
+    });
+  }, 60);
 }
 
 // Generate Decision Report (Markdown)
@@ -1015,6 +1160,7 @@ tabButtons.forEach(btn => {
     if (contentEl) contentEl.classList.add('active');
     
     if (tabId === 'tab-compare') renderCompareMatrix();
+    if (tabId === 'tab-visualize') renderVisualization();
     if (tabId === 'tab-report') renderReport();
     if (tabId === 'tab-checklist') renderChecklist();
   });

@@ -21,7 +21,7 @@ This file serves as the context-building brief and implementation guide for codi
 
 ## 3. Deployment & Host Mapping
 - **Type**: `static`
-- **OPC Gateway Route**: `http://home.lab/puppies/` (also binds to `http://localhost:4000/puppies/`)
+- **OPC Gateway Route**: `http://home.lab/puppies/` (also binds to `http://localhost:4100/puppies/`)
 - **Config Override**: Managed by `opc.config.json`:
   ```json
   {
