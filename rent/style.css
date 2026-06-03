@@ -827,3 +827,130 @@ input:checked + .slider-toggle:before {
   text-shadow: none;
   box-shadow: none;
 }
+
+/* ==========================================================================
+   Ecological Visualization Charts (Glassmorphic Bar Charts)
+   ========================================================================== */
+
+.chart-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chart-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-glass);
+  transform: translateX(4px);
+}
+
+/* Outstanding highlight style when matched with top recommendation */
+.chart-row.highlighted {
+  background: rgba(16, 185, 129, 0.04);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.05);
+}
+
+.chart-row.highlighted .chart-row-label {
+  color: #10B981;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-row.highlighted .chart-row-label::after {
+  content: "🏆 最佳推荐居住地";
+  font-size: 10px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10B981;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.chart-row-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.chart-row-label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.chart-row-val {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.chart-bar-container {
+  width: 100%;
+}
+
+.chart-bar-track {
+  height: 8px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.chart-bar-fill {
+  height: 100%;
+  width: 0%; /* Animated dynamically by JS */
+  border-radius: 4px;
+  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+.bar-greenery {
+  background: linear-gradient(90deg, #10B981, #34D399);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.bar-plot-ratio {
+  background: linear-gradient(90deg, #6366F1, #8B5CF6);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+
+.bar-density {
+  background: linear-gradient(90deg, #F59E0B, #FBBF24);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+/* Badge for ecology summary cards in dashboard listings */
+.badge-ecology {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-ecology.green {
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #a7f3d0;
+}
+.badge-ecology.gold {
+  border-color: rgba(245, 158, 11, 0.2);
+  color: #fef3c7;
+}
+.badge-ecology.purple {
+  border-color: rgba(99, 102, 241, 0.2);
+  color: #e0e7ff;
+}
+

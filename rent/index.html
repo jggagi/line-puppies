@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>上海租房地图 | 3-5年长期居住决策评分器</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=202606010359">
 </head>
 <body>
 
@@ -47,6 +47,7 @@
     <nav class="nav-tabs" role="tablist">
       <button class="tab-btn active" data-tab="tab-dashboard" role="tab">📊 房源决策看板</button>
       <button class="tab-btn" data-tab="tab-compare" role="tab">⚖️ 维度对比矩阵</button>
+      <button class="tab-btn" data-tab="tab-visualize" role="tab">📈 小区生态对比</button>
       <button class="tab-btn" data-tab="tab-report" role="tab">📝 决策报告生成</button>
       <button class="tab-btn" data-tab="tab-checklist" role="tab">🔍 线下看房清单</button>
       <button class="tab-btn" data-tab="tab-data" role="tab">⚙️ 数据中心</button>
@@ -337,6 +338,71 @@
       </div>
     </section>
 
+    <!-- Tab: Community Ecology Visualization -->
+    <section id="tab-visualize" class="tab-content" role="tabpanel">
+      <div class="visualize-container">
+        <div class="visualize-header" style="text-align: center; margin-bottom: 30px;">
+          <h2 style="font-size: 24px; margin-bottom: 8px;">📊 小区生态指标对比</h2>
+          <p style="color: var(--text-secondary); font-size: 14px; max-width: 600px; margin: 0 auto;">
+            系统化呈现 8 大核心候选小区的关键容积率、绿化率及建筑密度。通过对比小区的底层建造数据，能够更科学地分析出哪个小区具备最宽阔的楼间距与最宁静的生活宜居度。
+          </p>
+        </div>
+        
+        <div class="visualize-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px;">
+          <!-- Card 1: Greenery Rate -->
+          <div class="card chart-card" style="padding: 24px; position: relative;">
+            <div class="chart-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span class="chart-icon" style="font-size: 24px;">🌳</span>
+              <h3 style="font-size: 16px; font-weight: 650; margin: 0;">小区成熟绿化率对比 (Greenery)</h3>
+            </div>
+            <p class="chart-desc" style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+              植物覆盖与生态空间比重。指标越高，代表乔木错落越成熟、有更真实的林荫慢跑步道与散步空间。
+            </p>
+            <div class="chart-axis-label" style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 10px; border-bottom: 1px dashed var(--border-glass); padding-bottom: 4px;">
+              <span>0%</span><span>20%</span><span>40%</span><span>60%</span>
+            </div>
+            <div class="chart-body" id="chart-greenery" style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- Rendered dynamically by JS -->
+            </div>
+          </div>
+
+          <!-- Card 2: Plot Ratio -->
+          <div class="card chart-card" style="padding: 24px; position: relative;">
+            <div class="chart-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span class="chart-icon" style="font-size: 24px;">🏢</span>
+              <h3 style="font-size: 16px; font-weight: 650; margin: 0;">小区建筑容积率对比 (Plot Ratio)</h3>
+            </div>
+            <p class="chart-desc" style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+              建筑总面积与总用地面积之比。指标越低，小区的楼栋越矮/楼间距越开阔，居住舒适度与视野开阔度越高。
+            </p>
+            <div class="chart-axis-label" style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 10px; border-bottom: 1px dashed var(--border-glass); padding-bottom: 4px;">
+              <span>0.0</span><span>1.0</span><span>2.0</span><span>3.0</span>
+            </div>
+            <div class="chart-body" id="chart-plot-ratio" style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- Rendered dynamically by JS -->
+            </div>
+          </div>
+
+          <!-- Card 3: Building Density -->
+          <div class="card chart-card" style="padding: 24px; position: relative;">
+            <div class="chart-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span class="chart-icon" style="font-size: 24px;">📐</span>
+              <h3 style="font-size: 16px; font-weight: 650; margin: 0;">建筑基地密度对比 (Density)</h3>
+            </div>
+            <p class="chart-desc" style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+              建筑基底总面积占小区用地的比例。密度越低，地面绿化与活动广场占比越多，居家视野与私密防护效果越好。
+            </p>
+            <div class="chart-axis-label" style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-bottom: 10px; border-bottom: 1px dashed var(--border-glass); padding-bottom: 4px;">
+              <span>0%</span><span>10%</span><span>20%</span><span>30%</span>
+            </div>
+            <div class="chart-body" id="chart-density" style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- Rendered dynamically by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Tab 5: Data Center -->
     <section id="tab-data" class="tab-content" role="tabpanel">
       <div class="card" style="max-width: 700px; margin: 0 auto;">
@@ -381,7 +447,7 @@
 
   </main>
 
-  <script src="scraped_data.js"></script>
-  <script src="app.js"></script>
+  <script src="scraped_data.js?v=202606010359"></script>
+  <script src="app.js?v=202606010359"></script>
 </body>
 </html>

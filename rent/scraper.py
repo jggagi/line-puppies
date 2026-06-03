@@ -22,6 +22,24 @@ TARGET_COMMUNITIES = [
     "锦绣满堂"
 ]
 
+COMMUNITY_METRICS = {
+    "上海绿城": {"greenery_rate": 0.45, "plot_ratio": 2.2, "building_density": 0.25},
+    "仁恒河滨城": {"greenery_rate": 0.60, "plot_ratio": 2.7, "building_density": 0.18},
+    "香梅花园": {"greenery_rate": 0.50, "plot_ratio": 1.8, "building_density": 0.20},
+    "陆家嘴中央公寓": {"greenery_rate": 0.40, "plot_ratio": 2.1, "building_density": 0.22},
+    "联洋年华": {"greenery_rate": 0.40, "plot_ratio": 2.0, "building_density": 0.23},
+    "爱家亚洲花园": {"greenery_rate": 0.35, "plot_ratio": 2.6, "building_density": 0.26},
+    "涵合园": {"greenery_rate": 0.50, "plot_ratio": 0.9, "building_density": 0.15},
+    "锦绣满堂": {"greenery_rate": 0.38, "plot_ratio": 2.3, "building_density": 0.24}
+}
+
+def get_community_metrics(community_name):
+    for key, metrics in COMMUNITY_METRICS.items():
+        if key in community_name or community_name in key:
+            return metrics
+    return {"greenery_rate": 0.35, "plot_ratio": 2.2, "building_density": 0.23}
+
+
 # User agents rotation
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -36,7 +54,7 @@ SEED_LISTINGS = [
         "house_id": "SH30928372",
         "community": "上海绿城",
         "unit_id": "6号楼中区精装三房",
-        "base_rent": 17800,
+        "base_rent": 12500,
         "area_sqm": 128,
         "bedroom_count": 3,
         "floor": "12/28层",
@@ -50,7 +68,7 @@ SEED_LISTINGS = [
         "house_id": "SH30829102",
         "community": "上海绿城",
         "unit_id": "18号楼高区全景大三房",
-        "base_rent": 19800,
+        "base_rent": 15800,
         "area_sqm": 142,
         "bedroom_count": 3,
         "floor": "22/26层",
@@ -66,7 +84,7 @@ SEED_LISTINGS = [
         "house_id": "SH30291823",
         "community": "仁恒河滨城",
         "unit_id": "二期16号楼恒温观景三房",
-        "base_rent": 22500,
+        "base_rent": 19500,
         "area_sqm": 138,
         "bedroom_count": 3,
         "floor": "15/30层",
@@ -82,7 +100,7 @@ SEED_LISTINGS = [
         "house_id": "SH30391823",
         "community": "香梅花园",
         "unit_id": "二期11号楼中区观景三房",
-        "base_rent": 18500,
+        "base_rent": 14800,
         "area_sqm": 132,
         "bedroom_count": 3,
         "floor": "14/22层",
@@ -96,7 +114,7 @@ SEED_LISTINGS = [
         "house_id": "SH30382910",
         "community": "香梅花园",
         "unit_id": "一期6号楼低区阔绰大三房",
-        "base_rent": 16900,
+        "base_rent": 13500,
         "area_sqm": 126,
         "bedroom_count": 3,
         "floor": "5/18层",
@@ -112,7 +130,7 @@ SEED_LISTINGS = [
         "house_id": "SH30400101",
         "community": "陆家嘴中央公寓",
         "unit_id": "5号楼中区高品质三房",
-        "base_rent": 19500,
+        "base_rent": 18500,
         "area_sqm": 128,
         "bedroom_count": 3,
         "floor": "9/18层",
@@ -128,7 +146,7 @@ SEED_LISTINGS = [
         "house_id": "SH30500101",
         "community": "联洋年华",
         "unit_id": "10号楼高区精装大三房",
-        "base_rent": 17200,
+        "base_rent": 14500,
         "area_sqm": 120,
         "bedroom_count": 3,
         "floor": "12/16层",
@@ -144,7 +162,7 @@ SEED_LISTINGS = [
         "house_id": "SH30519283",
         "community": "爱家亚洲花园",
         "unit_id": "5号楼中区精装三房",
-        "base_rent": 15800,
+        "base_rent": 12500,
         "area_sqm": 120,
         "bedroom_count": 3,
         "floor": "11/24层",
@@ -160,7 +178,7 @@ SEED_LISTINGS = [
         "house_id": "SH30619281",
         "community": "涵合园",
         "unit_id": "3号楼花园洋房叠墅",
-        "base_rent": 19500,
+        "base_rent": 20000,
         "area_sqm": 145,
         "bedroom_count": 3,
         "floor": "1-2层",
@@ -176,7 +194,7 @@ SEED_LISTINGS = [
         "house_id": "SH30419283",
         "community": "锦绣满堂",
         "unit_id": "南区10号楼精装大三房",
-        "base_rent": 16500,
+        "base_rent": 13000,
         "area_sqm": 125,
         "bedroom_count": 3,
         "floor": "14/18层",
@@ -340,6 +358,7 @@ def generate_live_mock_listings():
             landlord_risk_desc = "租约需进一步确认"
             
         detail_url = f"https://sh.lianjia.com/zufang/{seed['house_id']}.html"
+        metrics = get_community_metrics(community)
         
         selected_scraped.append({
             "id": f"lst-{seed['house_id']}",
@@ -374,7 +393,10 @@ def generate_live_mock_listings():
             "rl_wfh_bad": rl_wfh_bad,
             "rl_property_bad": rl_property_bad,
             "rl_lease_unstable": rl_lease_unstable,
-            "is_offline": is_offline
+            "is_offline": is_offline,
+            "greenery_rate": metrics["greenery_rate"],
+            "plot_ratio": metrics["plot_ratio"],
+            "building_density": metrics["building_density"]
         })
         
     return selected_scraped
@@ -549,7 +571,10 @@ def process_scraped_item(raw, community_name):
         "rl_wfh_bad": False,
         "rl_property_bad": False,
         "rl_lease_unstable": False,
-        "is_offline": False
+        "is_offline": False,
+        "greenery_rate": get_community_metrics(community_name)["greenery_rate"],
+        "plot_ratio": get_community_metrics(community_name)["plot_ratio"],
+        "building_density": get_community_metrics(community_name)["building_density"]
     }
 
 if __name__ == "__main__":
