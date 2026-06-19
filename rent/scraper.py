@@ -19,7 +19,8 @@ TARGET_COMMUNITIES = [
     "联洋年华",
     "爱家亚洲花园",
     "涵合园",
-    "锦绣满堂"
+    "锦绣满堂",
+    "四季雅苑"
 ]
 
 COMMUNITY_METRICS = {
@@ -30,7 +31,8 @@ COMMUNITY_METRICS = {
     "联洋年华": {"greenery_rate": 0.40, "plot_ratio": 2.0, "building_density": 0.23},
     "爱家亚洲花园": {"greenery_rate": 0.35, "plot_ratio": 2.6, "building_density": 0.26},
     "涵合园": {"greenery_rate": 0.50, "plot_ratio": 0.9, "building_density": 0.15},
-    "锦绣满堂": {"greenery_rate": 0.38, "plot_ratio": 2.3, "building_density": 0.24}
+    "锦绣满堂": {"greenery_rate": 0.38, "plot_ratio": 2.3, "building_density": 0.24},
+    "四季雅苑": {"greenery_rate": 0.55, "plot_ratio": 0.38, "building_density": 0.12}
 }
 
 def get_community_metrics(community_name):
@@ -38,6 +40,129 @@ def get_community_metrics(community_name):
         if key in community_name or community_name in key:
             return metrics
     return {"greenery_rate": 0.35, "plot_ratio": 2.2, "building_density": 0.23}
+
+
+# 每周 3 天办公锚点：陆家嘴环球金融中心（世纪大道100号）
+COMMUTE_TO_SWFC = {
+    "四季雅苑": {
+        "metro_route": "步行世纪公园站 → 2号线陆家嘴站 → 步行至环球金融中心（约32-42分钟）",
+        "metro_peak_min": 38,
+        "bus_route": "983/987路转2号线；高峰约45-60分钟，雨天备选",
+        "drive_route": "花木路 → 内环 → 陆家嘴环路",
+        "drive_offpeak_min": 22,
+        "drive_peak_min": 42,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 8,
+    },
+    "上海绿城": {
+        "metro_route": "7号线龙阳路换2号线至陆家嘴（约40-50分钟）",
+        "metro_peak_min": 45,
+        "bus_route": "794/东周线至陆家嘴环路段，高峰约50-65分钟",
+        "drive_route": "锦绣路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 25,
+        "drive_peak_min": 45,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 7,
+    },
+    "仁恒河滨城": {
+        "metro_route": "9号线世纪大道换2号线至陆家嘴（约35-45分钟）",
+        "metro_peak_min": 40,
+        "bus_route": "公交稀疏，建议地铁或打车接驳",
+        "drive_route": "罗山路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 20,
+        "drive_peak_min": 38,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 8,
+    },
+    "香梅花园": {
+        "metro_route": "世纪公园站2号线直达陆家嘴（约28-38分钟）",
+        "metro_peak_min": 33,
+        "bus_route": "东周线/794至东昌路，高峰约45-55分钟",
+        "drive_route": "梅花路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 18,
+        "drive_peak_min": 35,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 9,
+    },
+    "陆家嘴中央公寓": {
+        "metro_route": "2号线直达陆家嘴（约25-35分钟）",
+        "metro_peak_min": 30,
+        "bus_route": "796/583至东昌路，高峰约35-50分钟",
+        "drive_route": "锦带路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 15,
+        "drive_peak_min": 32,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 9,
+    },
+    "联洋年华": {
+        "metro_route": "9号线世纪大道换2号线至陆家嘴（约35-45分钟）",
+        "metro_peak_min": 40,
+        "bus_route": "不建议依赖公交",
+        "drive_route": "芳甸路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 20,
+        "drive_peak_min": 38,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 8,
+    },
+    "爱家亚洲花园": {
+        "metro_route": "6号线世纪大道换2号线至陆家嘴（约45-55分钟）",
+        "metro_peak_min": 50,
+        "bus_route": "781/610至浦东南路，高峰约50-70分钟",
+        "drive_route": "浦三路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 22,
+        "drive_peak_min": 45,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 7,
+    },
+    "涵合园": {
+        "metro_route": "需接驳9/2号线，约50-65分钟",
+        "metro_peak_min": 58,
+        "bus_route": "几乎无可靠公交",
+        "drive_route": "锦绣路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 25,
+        "drive_peak_min": 48,
+        "parking_note": "轨交弱，自驾为主",
+        "commute_score": 5,
+    },
+    "锦绣满堂": {
+        "metro_route": "9号线世纪大道换2号线至陆家嘴（约38-48分钟）",
+        "metro_peak_min": 43,
+        "bus_route": "不建议依赖公交",
+        "drive_route": "锦绣路 → 内环 → 陆家嘴",
+        "drive_offpeak_min": 22,
+        "drive_peak_min": 40,
+        "parking_note": "SWFC停车约15元/60分钟",
+        "commute_score": 8,
+    },
+}
+
+
+def get_swfc_commute(community_name):
+    for key, profile in COMMUTE_TO_SWFC.items():
+        if key in community_name or community_name in key:
+            return profile
+    return None
+
+
+def build_swfc_commute_fields(community_name):
+    p = get_swfc_commute(community_name)
+    if not p:
+        return {"commute": "日常通勤合理，地铁打车时间契合度极佳"}
+    drive = f"{p['drive_route']}（平峰约{p['drive_offpeak_min']}分，早高峰约{p['drive_peak_min']}分）"
+    commute = (
+        f"【每周3天·陆家嘴环球金融中心】🚇 {p['metro_route']} | "
+        f"🚌 {p['bus_route']} | 🚗 {drive}"
+    )
+    return {
+        "commute": commute,
+        "commute_metro": p["metro_route"],
+        "commute_bus": p["bus_route"],
+        "commute_drive": drive,
+        "commute_parking": p["parking_note"],
+        "commute_peak_metro_min": p["metro_peak_min"],
+        "commute_peak_drive_min": p["drive_peak_min"],
+        "commute_score_swfc": p["commute_score"],
+    }
 
 
 # User agents rotation
@@ -203,6 +328,22 @@ SEED_LISTINGS = [
         "renovation": "三年新精装",
         "noise_risk": "低噪音。属于南区中轴位置，远离外围喧闹",
         "dim_a": 7, "dim_b": 8, "dim_c": 8, "dim_d": 7, "dim_e": 7
+    },
+
+    # 四季雅苑 (16,000 - 24,000 - 花木世纪公园低密标杆)
+    {
+        "house_id": "SH30782910",
+        "community": "四季雅苑",
+        "unit_id": "公寓区中层观景三房",
+        "base_rent": 16800,
+        "area_sqm": 128,
+        "bedroom_count": 3,
+        "floor": "8/12层",
+        "orientation": "南北",
+        "layout_comment": "花木世纪公园旁和黄低密社区内公寓三房，南北通透正气。北向次卧可作独立书房，窗景面向内部浓荫绿地，安静度与采光均优，极适合长期 WFH。需现场确认楼栋入口是否有台阶——部分低密组团对轮椅推行不够友好。",
+        "renovation": "经典精装保养良好",
+        "noise_risk": "极低噪音，远离主干道，内部环路仅有偶发邻里步行声",
+        "dim_a": 10, "dim_b": 8, "dim_c": 7, "dim_d": 9, "dim_e": 8
     }
 ]
 
@@ -349,6 +490,13 @@ def generate_live_mock_listings():
             atm_desc = "浦东常住成熟生活区，中产家庭居多，邻居温和，整体生活节奏慢"
             daily_desc = "紧邻联洋大拇指商业辐射圈，步行500米即可满足日常生活及咖啡馆办公需求"
             landlord_risk_desc = "中低风险。房东为个人持有，无置换压力，可商谈稳定长租"
+        elif "四季雅苑" in community:
+            greenery_desc = "和记黄埔打造的花木低密标杆，绿化率高达55%，内部林荫步道与中央绿地极具散步质感，紧邻世纪公园延伸绿廊"
+            car_desc = "低密别墅区人车分流严格，主干道车流极少，步行环道安静安全"
+            property_desc = "和记物业口碑稳定，公区保洁与绿化修剪频率高，门禁与访客管理较严"
+            atm_desc = "高端自住为主，外籍与高管家庭占比高，社区氛围安静有序，整体熵值极低"
+            daily_desc = "步行可达世纪公园与大拇指广场，2号线世纪公园站约800-1000米，生活医疗配套成熟"
+            landlord_risk_desc = "中低风险。标的稀缺租金偏高，多数房东持有多套资产，愿意谈3年长约但难锁不涨租"
         else:
             greenery_desc = "绿化水平一般，步行环境普通"
             car_desc = "路上偶有零散占道停放的私家车"
@@ -359,6 +507,7 @@ def generate_live_mock_listings():
             
         detail_url = f"https://sh.lianjia.com/zufang/{seed['house_id']}.html"
         metrics = get_community_metrics(community)
+        swfc_commute = build_swfc_commute_fields(community)
         
         selected_scraped.append({
             "id": f"lst-{seed['house_id']}",
@@ -378,7 +527,7 @@ def generate_live_mock_listings():
             "property_management": property_desc,
             "community_atmosphere": atm_desc,
             "daily_convenience": daily_desc,
-            "commute": "日常通勤合理，地铁打车时间契合度极佳",
+            **swfc_commute,
             "lease_terms": "付款押一付三，支持3-5年稳定长约谈判，争取涨幅封顶条款",
             "landlord_risk": landlord_risk_desc,
             "viewing_notes": f"【系统高真同步案例】链接: {detail_url}",
@@ -537,6 +686,10 @@ def process_scraped_item(raw, community_name):
         dim_a, dim_c, dim_d, dim_e = 9, 7, 8, 8
     elif "联洋年华" in community_name:
         dim_a, dim_c, dim_d, dim_e = 8, 8, 9, 8
+    elif "四季雅苑" in community_name:
+        dim_a, dim_c, dim_d, dim_e = 10, 7, 9, 8
+
+    swfc = build_swfc_commute_fields(community_name)
         
     return {
         "id": unique_id,
@@ -556,7 +709,7 @@ def process_scraped_item(raw, community_name):
         "property_management": "顶级高品质维护",
         "community_atmosphere": "安静中产社区区带散步感",
         "daily_convenience": "商圈成熟地带，生活极其便利",
-        "commute": "日常通勤合理，打车地铁畅通度极佳",
+        **swfc,
         "lease_terms": "待协商。锁定3年长租与小幅不涨租约定",
         "landlord_risk": "房东持有稳定，租期高保障度",
         "viewing_notes": f"【链家实时抓取同步】链接: https://sh.lianjia.com/zufang/{house_id}.html",

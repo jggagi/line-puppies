@@ -1,6 +1,6 @@
 // State Management
 let listings = [];
-let currentFilter = 'all';
+let currentFilter = 'available';
 let checkedChecklistItems = {}; // { listingId: { itemId: true/false } }
 
 // Weights
@@ -22,8 +22,202 @@ const COMMUNITY_METRICS = {
   "爱家亚洲花园": { greenery_rate: 0.35, plot_ratio: 2.6, building_density: 0.26 },
   "涵合园": { greenery_rate: 0.50, plot_ratio: 0.9, building_density: 0.15 },
   "锦绣满堂": { greenery_rate: 0.38, plot_ratio: 2.3, building_density: 0.24 },
-  "水清木华": { greenery_rate: 0.28, plot_ratio: 2.5, building_density: 0.28 }
+  "水清木华": { greenery_rate: 0.28, plot_ratio: 2.5, building_density: 0.28 },
+  "四季雅苑": { greenery_rate: 0.55, plot_ratio: 0.38, building_density: 0.12 }
 };
+
+// 办公锚点：每周 3 天陆家嘴环球金融中心（世纪大道100号），其余 4 天 WFH
+const OFFICE_SWFC = {
+  name: '陆家嘴环球金融中心',
+  address: '浦东新区世纪大道100号',
+  workDaysPerWeek: 3,
+  wfhDaysPerWeek: 4
+};
+
+// 各小区 → 环球金融中心：地铁 / 公交 / 自驾（早高峰口径，含到站步行）
+const COMMUTE_TO_SWFC = {
+  "四季雅苑": {
+    nearest_metro: "世纪公园(2号线)约10-12分钟步行；花木路(7号线)约8-10分钟",
+    metro_route: "推荐：步行至世纪公园站 → 2号线至陆家嘴站 → 步行/天桥至环球金融中心（约32-42分钟）",
+    metro_peak_min: 38,
+    bus_route: "983/987路等至龙阳路/世纪公园枢纽再转2号线；无直达，高峰约45-60分钟，仅雨天备选",
+    bus_peak_min: 52,
+    drive_route: "花木路 → 锦绣路/杨高南路 → 内环高架 → 陆家嘴环路",
+    drive_offpeak_min: 22,
+    drive_peak_min: 42,
+    parking_note: "SWFC地下停车约15元/60分钟；每周自驾3天约500-900元/月",
+    commute_score: 8,
+    caveat: "2号线直达优于7号线换乘；自驾早高峰内环陆家嘴段易排队"
+  },
+  "上海绿城": {
+    nearest_metro: "锦绣路/杨高南路(7号线)约6-8分钟步行",
+    metro_route: "7号线至龙阳路站 → 换乘2号线至陆家嘴（约40-50分钟，含换乘步行）",
+    metro_peak_min: 45,
+    bus_route: "794/东周线等经锦绣路浦建路，可至东昌路/陆家嘴环路段，高峰约50-65分钟",
+    bus_peak_min: 55,
+    drive_route: "浦建路/锦绣路 → 杨高南路 → 内环 → 陆家嘴",
+    drive_offpeak_min: 25,
+    drive_peak_min: 45,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 7,
+    caveat: "地铁需一次换乘；794路公交受路况影响大"
+  },
+  "仁恒河滨城": {
+    nearest_metro: "芳甸路(9号线)约8-10分钟步行",
+    metro_route: "9号线至世纪大道站 → 换乘2号线至陆家嘴（约35-45分钟）",
+    metro_peak_min: 40,
+    bus_route: "联洋板块公交少，不建议作为主力；可打车至2号线龙阳路/世纪公园约15分钟",
+    bus_peak_min: 50,
+    drive_route: "罗山路/杨高路 → 内环 → 陆家嘴，约9-11公里",
+    drive_offpeak_min: 20,
+    drive_peak_min: 38,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 8,
+    caveat: "9号线早高峰芳甸路-世纪大道段较挤；自驾平峰体验好"
+  },
+  "香梅花园": {
+    nearest_metro: "世纪公园(2号线)约8-10分钟步行",
+    metro_route: "步行至世纪公园站 → 2号线直达陆家嘴（约28-38分钟，含站内及楼口步行）",
+    metro_peak_min: 33,
+    bus_route: "东周线/794经花木路，可至东昌路附近，高峰约45-55分钟",
+    bus_peak_min: 48,
+    drive_route: "梅花路/白杨路 → 龙阳路 → 内环 → 陆家嘴，约8公里",
+    drive_offpeak_min: 18,
+    drive_peak_min: 35,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 9,
+    caveat: "2号线直达为板块最优轨交方案"
+  },
+  "陆家嘴中央公寓": {
+    nearest_metro: "上海科技馆/世纪公园(2号线)约10-15分钟步行",
+    metro_route: "2号线直达陆家嘴（约25-35分钟，花木板块轨交最近之一）",
+    metro_peak_min: 30,
+    bus_route: "796/583等至东昌路/浦东南路，高峰约35-50分钟",
+    bus_peak_min: 42,
+    drive_route: "锦带路/梅花路 → 内环 → 陆家嘴，约6-8公里",
+    drive_offpeak_min: 15,
+    drive_peak_min: 32,
+    parking_note: "SWFC地下停车约15元/60分钟；自驾3天/周性价比相对最高",
+    commute_score: 9,
+    caveat: "职住距离最近，但需用居住安静度对冲花木路车流"
+  },
+  "联洋年华": {
+    nearest_metro: "芳甸路(9号线)约6-8分钟步行",
+    metro_route: "9号线至世纪大道 → 2号线至陆家嘴（约35-45分钟）",
+    metro_peak_min: 40,
+    bus_route: "联洋内部公交稀疏，不建议依赖",
+    bus_peak_min: 55,
+    drive_route: "芳甸路 → 罗山路 → 内环 → 陆家嘴",
+    drive_offpeak_min: 20,
+    drive_peak_min: 38,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 8,
+    caveat: "与仁恒类似，轨交一次换乘"
+  },
+  "爱家亚洲花园": {
+    nearest_metro: "东三里桥/临沂新村(6号线)约10-15分钟步行",
+    metro_route: "6号线至世纪大道 → 2号线至陆家嘴（约45-55分钟，两次换乘动线）",
+    metro_peak_min: 50,
+    bus_route: "781/610等至浦东南路，高峰约50-70分钟",
+    bus_peak_min: 58,
+    drive_route: "浦三路/东方路 → 南浦大桥/内环 → 陆家嘴",
+    drive_offpeak_min: 22,
+    drive_peak_min: 45,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 7,
+    caveat: "轨交换乘多，早高峰南浦/内环段波动大"
+  },
+  "涵合园": {
+    nearest_metro: "最近为芳甸路/世纪公园，步行或骑行约15-20分钟",
+    metro_route: "需先接驳至9号线或2号线，全程约50-65分钟，不适合作为3天通勤主力",
+    metro_peak_min: 58,
+    bus_route: "几乎无可靠直达线路，依赖打车接驳",
+    bus_peak_min: 65,
+    drive_route: "锦绣路 → 内环 → 陆家嘴，约10-12公里",
+    drive_offpeak_min: 25,
+    drive_peak_min: 48,
+    parking_note: "轨交弱时自驾更现实，但高峰时间不可控",
+    commute_score: 5,
+    caveat: "职住通勤是明显短板，仅适合WFH占比更高的方案"
+  },
+  "锦绣满堂": {
+    nearest_metro: "芳甸路(9号线)约10-12分钟步行",
+    metro_route: "9号线至世纪大道 → 2号线至陆家嘴（约38-48分钟）",
+    metro_peak_min: 43,
+    bus_route: "联洋公交少，不建议",
+    bus_peak_min: 55,
+    drive_route: "锦绣路 → 内环 → 陆家嘴",
+    drive_offpeak_min: 22,
+    drive_peak_min: 40,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 8,
+    caveat: "轨交与联洋年华/仁恒接近"
+  },
+  "水清木华": {
+    nearest_metro: "世纪公园(2号线)约5-8分钟步行",
+    metro_route: "2号线直达陆家嘴（约25-35分钟）",
+    metro_peak_min: 30,
+    bus_route: "796等至东昌路，高峰约40-55分钟",
+    bus_peak_min: 45,
+    drive_route: "锦带路 → 内环 → 陆家嘴，约7公里",
+    drive_offpeak_min: 16,
+    drive_peak_min: 35,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 9,
+    caveat: "轨交近但小区品质红线需单独评估"
+  }
+};
+
+function getCommuteProfile(community) {
+  if (!community) return null;
+  if (COMMUTE_TO_SWFC[community]) return COMMUTE_TO_SWFC[community];
+  const key = Object.keys(COMMUTE_TO_SWFC).find(k => community.includes(k) || k.includes(community));
+  return key ? COMMUTE_TO_SWFC[key] : null;
+}
+
+function getEffectiveDimD(listing) {
+  const profile = getCommuteProfile(listing.community);
+  const manual = listing.dim_d ?? 7;
+  if (!profile) return manual;
+  return Math.min(10, Math.max(1, Math.round(manual * 0.35 + profile.commute_score * 0.65)));
+}
+
+function enrichListingSwfcCommute(listing) {
+  const p = getCommuteProfile(listing.community);
+  if (!p) return;
+  listing.commute_office = OFFICE_SWFC.name;
+  listing.commute_metro = p.metro_route;
+  listing.commute_bus = p.bus_route;
+  listing.commute_drive = `${p.drive_route}（平峰约${p.drive_offpeak_min}分钟，早高峰约${p.drive_peak_min}分钟）`;
+  listing.commute_parking = p.parking_note;
+  listing.commute_peak_metro_min = p.metro_peak_min;
+  listing.commute_peak_drive_min = p.drive_peak_min;
+  listing.commute_score_swfc = p.commute_score;
+  listing.commute = `【每周${OFFICE_SWFC.workDaysPerWeek}天·${OFFICE_SWFC.name}】🚇 ${p.metro_route} | 🚌 ${p.bus_route} | 🚗 ${listing.commute_drive}。${p.caveat || ''}`;
+}
+
+function enrichAllListingsSwfcCommute() {
+  listings.forEach(enrichListingSwfcCommute);
+}
+
+/** 在租优先 → 非红线 → 综合分从高到低 */
+function sortListingsByScoreAvailable(items) {
+  return [...items].sort((a, b) => {
+    const aOff = !!a.is_offline;
+    const bOff = !!b.is_offline;
+    if (aOff !== bOff) return aOff ? 1 : -1;
+
+    const scoreA = calculateScore(a);
+    const scoreB = calculateScore(b);
+    const gradeA = determineGrade(a, scoreA);
+    const gradeB = determineGrade(b, scoreB);
+    if (gradeA === 'D' && gradeB !== 'D') return 1;
+    if (gradeA !== 'D' && gradeB === 'D') return -1;
+
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return (a.community || '').localeCompare(b.community || '', 'zh-CN');
+  });
+}
 
 
 // Default Listings Data (High Fidelity Mock)
@@ -272,16 +466,52 @@ const DEFAULT_LISTINGS = [
     rl_property_bad: true,  // Triggers Red Line 4
     rl_lease_unstable: false,
     is_offline: false
+  },
+  {
+    id: "lst-SH30782910",
+    community: "四季雅苑",
+    unit_id: "3室 / 8/12层 / 128㎡",
+    rent: 16800,
+    area_sqm: 128,
+    bedroom_count: 3,
+    has_independent_study: true,
+    floor: "8/12层",
+    orientation: "南北",
+    layout_comment: "花木世纪公园旁和黄低密社区内公寓三房，南北通透正气。北向次卧可作独立书房，窗景面向内部浓荫绿地，安静度与采光均优，极适合长期 WFH。需现场确认楼栋入口是否有台阶——部分低密组团对轮椅推行不够友好。",
+    renovation: "经典精装保养良好",
+    noise_risk: "极低噪音，远离主干道，内部环路仅有偶发邻里步行声",
+    greenery: "和记黄埔打造的花木低密标杆，绿化率高达55%，内部林荫步道与中央绿地极具散步质感，紧邻世纪公园延伸绿廊",
+    car_pedestrian_separation: "低密别墅区人车分流严格，主干道车流极少，步行环道安静安全",
+    property_management: "和记物业口碑稳定，公区保洁与绿化修剪频率高，门禁与访客管理较严",
+    community_atmosphere: "高端自住为主，外籍与高管家庭占比高，社区氛围安静有序，整体熵值极低",
+    daily_convenience: "步行可达世纪公园与大拇指广场，2号线世纪公园站约800-1000米，生活医疗配套成熟",
+    commute: "打车到陆家嘴约15-20分钟，世纪公园站地铁便利，雨天打车接单率高",
+    lease_terms: "押一付三，可谈3年长约，但房东普遍对涨幅保留5%以内调整空间",
+    landlord_risk: "中低风险。标的稀缺租金偏高，多数房东持有多套资产，愿意长租但难完全锁死不涨租",
+    viewing_notes: "小区散步质感接近香梅/绿城第一梯队，公区极静。务必实测：① 楼栋到电梯/入户是否有台阶；② 书房窗景是否被乔木冬季挡光；③ 同户型挂牌价是否明显高于15k心理线。",
+    dim_a: 10,
+    dim_b: 8,
+    dim_c: 7,
+    dim_d: 9,
+    dim_e: 8,
+    rl_not_three_bed: false,
+    rl_car_messy: false,
+    'rl_wfh-bad': false,
+    rl_wfh_bad: false,
+    rl_property_bad: false,
+    rl_lease_unstable: false,
+    is_offline: false
   }
 ];
 
 // Helper: Calculate Score out of 100 based on weights
 function calculateScore(listing) {
+  const dimD = getEffectiveDimD(listing);
   const score = (
     listing.dim_a * WEIGHTS.a +
     listing.dim_b * WEIGHTS.b +
     listing.dim_c * WEIGHTS.c +
-    listing.dim_d * WEIGHTS.d +
+    dimD * WEIGHTS.d +
     listing.dim_e * WEIGHTS.e
   ) * 10;
   return Math.round(score * 10) / 10; // Round to 1 decimal place
@@ -302,7 +532,7 @@ function determineGrade(listing, score) {
   }
   
   if (score >= 85) {
-    const isTier1 = listing.community.includes('绿城') || listing.community.includes('仁恒');
+    const isTier1 = listing.community.includes('绿城') || listing.community.includes('仁恒') || listing.community.includes('四季雅苑');
     return isTier1 ? 'S' : 'A';
   } else if (score >= 75) {
     return 'A';
@@ -321,6 +551,7 @@ function saveState() {
     l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
     l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
     l.building_density = l.building_density || metrics.building_density;
+    enrichListingSwfcCommute(l);
   });
   localStorage.setItem('sh_rental_map_listings', JSON.stringify(listings));
   localStorage.setItem('sh_rental_map_checklist', JSON.stringify(checkedChecklistItems));
@@ -361,6 +592,7 @@ function loadState() {
     });
 
     window.scrapedListings.forEach(scraped => {
+      enrichListingSwfcCommute(scraped);
       const existingIndex = listings.findIndex(l => l.id === scraped.id);
       if (existingIndex >= 0) {
         listings[existingIndex].rent = scraped.rent;
@@ -368,6 +600,7 @@ function loadState() {
         listings[existingIndex].floor = scraped.floor;
         listings[existingIndex].orientation = scraped.orientation;
         listings[existingIndex].is_offline = false;
+        enrichListingSwfcCommute(listings[existingIndex]);
       } else {
         listings.push(scraped);
       }
@@ -381,16 +614,10 @@ function loadState() {
       l.building_density = l.building_density || metrics.building_density;
     });
 
+    enrichAllListingsSwfcCommute();
     saveState();
   } else {
-    // If no sync happened but loaded from storage, still align metrics
-    listings.forEach(l => {
-      const metrics = COMMUNITY_METRICS[l.community] || { greenery_rate: 0.35, plot_ratio: 2.2, building_density: 0.23 };
-      l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
-      l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
-      l.building_density = l.building_density || metrics.building_density;
-    });
-    saveState();
+    enrichAllListingsSwfcCommute();
   }
 }
 
@@ -435,6 +662,7 @@ function renderDashboard() {
     
     let matchesTier = true;
     if (currentFilter === 'all') matchesTier = true;
+    else if (currentFilter === 'available') matchesTier = !listing.is_offline;
     else if (currentFilter === 'S-A') matchesTier = (grade === 'S' || grade === 'A');
     else if (currentFilter === 'B') matchesTier = (grade === 'B');
     else if (currentFilter === 'D') matchesTier = (grade === 'D');
@@ -444,18 +672,9 @@ function renderDashboard() {
     return matchesTier && matchesBudget;
   });
   
-  filteredListings.sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    const gradeA = determineGrade(a, scoreA);
-    const gradeB = determineGrade(b, scoreB);
-    
-    if (gradeA === 'D' && gradeB !== 'D') return 1;
-    if (gradeA !== 'D' && gradeB === 'D') return -1;
-    return scoreB - scoreA;
-  });
+  const sortedListings = sortListingsByScoreAvailable(filteredListings);
   
-  if (filteredListings.length === 0) {
+  if (sortedListings.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1;">
         <div style="font-size: 48px;">🔍</div>
@@ -465,10 +684,11 @@ function renderDashboard() {
     return;
   }
   
-  filteredListings.forEach((listing, index) => {
+  sortedListings.forEach((listing, index) => {
     const score = calculateScore(listing);
     const grade = determineGrade(listing, score);
     const globalIndex = listings.findIndex(l => l.id === listing.id);
+    const rankLabel = listing.is_offline ? '' : `<span style="font-size:11px;font-weight:700;color:var(--accent-primary);margin-right:6px;">#${index + 1}</span>`;
     
     const card = document.createElement('div');
     card.className = `card property-card ${grade === 'D' ? 'eliminated' : ''} ${grade === 'S' ? 'highly-recommended' : ''} ${listing.is_offline ? 'offline' : ''}`;
@@ -508,7 +728,7 @@ function renderDashboard() {
     card.innerHTML = `
       <div class="property-header">
         <div class="property-title">
-          <h3>${escapeHtml(listing.community)}${offlineBadge}</h3>
+          <h3>${rankLabel}${escapeHtml(listing.community)}${offlineBadge}</h3>
           <p>${escapeHtml(listing.unit_id)}</p>
         </div>
         <div class="badge-grade grade-${grade}">${grade}</div>
@@ -529,6 +749,7 @@ function renderDashboard() {
         <div class="badge-ecology green" title="小区成熟绿化率">🌳 绿化 ${Math.round((listing.greenery_rate || 0.35) * 100)}%</div>
         <div class="badge-ecology purple" title="小区开发容积率">🏢 容积率 ${(listing.plot_ratio || 2.2).toFixed(1)}</div>
         <div class="badge-ecology gold" title="建筑基底密度">📐 密度 ${Math.round((listing.building_density || 0.23) * 100)}%</div>
+        ${listing.commute_peak_metro_min ? `<div class="badge-ecology" style="border-color: rgba(59,130,246,0.35); color: var(--accent-primary);" title="早高峰地铁至环球金融中心">🚇 地铁约${listing.commute_peak_metro_min}分</div><div class="badge-ecology" style="border-color: rgba(245,158,11,0.35); color: #f59e0b;" title="早高峰自驾">🚗 自驾约${listing.commute_peak_drive_min}分</div>` : ''}
       </div>
       
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
@@ -558,22 +779,63 @@ function renderDashboard() {
   });
 }
 
+// 陆家嘴环球金融中心通勤对比（按小区去重）
+function renderSwfcCommutePanel() {
+  const panel = document.getElementById('swfc-commute-panel');
+  if (!panel) return;
+
+  const communities = [...new Set(listings.map(l => l.community))].filter(c => getCommuteProfile(c));
+  if (communities.length === 0) {
+    panel.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">暂无通勤数据。</p>';
+    return;
+  }
+
+  const sorted = communities
+    .map(name => ({ name, profile: getCommuteProfile(name) }))
+    .sort((a, b) => a.profile.metro_peak_min - b.profile.metro_peak_min);
+
+  let html = `
+    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+      办公锚点：<strong>${OFFICE_SWFC.name}</strong>（${OFFICE_SWFC.address}）·
+      每周 <strong>${OFFICE_SWFC.workDaysPerWeek}</strong> 天到岗 /
+      <strong>${OFFICE_SWFC.wfhDaysPerWeek}</strong> 天居家。
+      D 维度评分已按「地铁 65% + 生活配套 35%」折算进综合分。
+    </p>
+    <div class="table-responsive">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>小区</th>
+            <th>🚇 地铁（早高峰）</th>
+            <th>🚌 公交</th>
+            <th>🚗 自驾（平峰/高峰）</th>
+            <th>通勤分</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  sorted.forEach(({ name, profile: p }) => {
+    html += `<tr>
+      <td style="font-weight: 600;">${escapeHtml(name)}</td>
+      <td style="font-size: 12px;">${escapeHtml(p.metro_route)}<br><span style="color: var(--accent-primary);">约 ${p.metro_peak_min} 分钟</span></td>
+      <td style="font-size: 12px;">${escapeHtml(p.bus_route)}</td>
+      <td style="font-size: 12px;">${escapeHtml(p.drive_route)}<br>平峰 ~${p.drive_offpeak_min}分 / 高峰 ~${p.drive_peak_min}分<br><span style="color: var(--text-muted);">${escapeHtml(p.parking_note)}</span></td>
+      <td style="text-align: center; font-weight: 700;">${p.commute_score}/10</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  panel.innerHTML = html;
+}
+
 // Side-by-side Comparison Matrix
 function renderCompareMatrix() {
+  renderSwfcCommutePanel();
   const table = document.getElementById('compare-table-el');
   if (!table) return;
   table.innerHTML = '';
   
-  const activeListings = listings.filter(l => true).sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    const gradeA = determineGrade(a, scoreA);
-    const gradeB = determineGrade(b, scoreB);
-    
-    if (gradeA === 'D' && gradeB !== 'D') return 1;
-    if (gradeA !== 'D' && gradeB === 'D') return -1;
-    return scoreB - scoreA;
-  });
+  const activeListings = sortListingsByScoreAvailable(listings);
   
   if (activeListings.length === 0) {
     table.innerHTML = `<tr><td style="text-align: center; padding: 40px; color: var(--text-muted);">暂无房源数据。</td></tr>`;
@@ -607,15 +869,25 @@ function renderCompareMatrix() {
     { label: 'A. 小区长期居住 (35%)', key: 'dim_a', isScore: true },
     { label: 'B. 户型与WFH质量 (30%)', key: 'dim_b', isScore: true },
     { label: 'C. 租金性价比 (15%)', key: 'dim_c', isScore: true },
-    { label: 'D. 地段生活便利 (10%)', key: 'dim_d', isScore: true },
+    { label: 'D. 地段便利 (10%,含通勤折算)', key: 'dim_d', isScore: true, format: (v, l) => {
+      const eff = getEffectiveDimD(l);
+      const raw = l.dim_d ?? '-';
+      return eff !== raw ? `${eff} <span style="font-size:11px;color:var(--text-muted)">(录入${raw}×35%+通勤${l.commute_score_swfc || '-'}×65%)</span>` : `${eff}`;
+    }},
     { label: 'E. 风险与不确定 (10%)', key: 'dim_e', isScore: true },
+    { label: '🚇 地铁→环球金融中心', key: 'commute_metro' },
+    { label: '🚌 公交备选', key: 'commute_bus' },
+    { label: '🚗 自驾路线', key: 'commute_drive' },
+    { label: '🅿️ 停车与成本', key: 'commute_parking' },
+    { label: '早高峰地铁约(分钟)', key: 'commute_peak_metro_min' },
+    { label: '早高峰自驾约(分钟)', key: 'commute_peak_drive_min' },
     
     { label: '小区绿化与散步感', key: 'greenery' },
     { label: '小区人车分流', key: 'car_pedestrian_separation' },
     { label: '物业管理与安全', key: 'property_management' },
     { label: '社区氛围与邻里', key: 'community_atmosphere' },
     { label: '生活商业便利性', key: 'daily_convenience' },
-    { label: '地段与通勤评价', key: 'commute' },
+    { label: '综合通勤摘要', key: 'commute' },
     { label: '合同条款与长租稳定性', key: 'lease_terms' },
     { label: '房东套现/自住风险', key: 'landlord_risk' },
     { label: '看房实地备注', key: 'viewing_notes' }
@@ -645,11 +917,11 @@ function renderCompareMatrix() {
         val = `<span class="badge-grade grade-${grade}" style="width: 28px; height: 28px; font-size: 13px; display: inline-flex; margin: 0 auto;">${grade}</span>`;
       } else if (r.key === 'score') {
         val = `<strong style="font-size: 16px; color: ${grade === 'D' ? 'var(--accent-danger)' : 'var(--accent-success)'};">${score}</strong> / 100`;
-      } else if (r.isScore) {
-        const rating = l[r.key];
-        val = `<span style="font-weight: 600; color: var(--accent-primary);">${rating}</span>/10`;
       } else if (r.format) {
         val = r.format(l[r.key], l);
+      } else if (r.isScore) {
+        const rating = r.key === 'dim_d' ? getEffectiveDimD(l) : l[r.key];
+        val = `<span style="font-weight: 600; color: var(--accent-primary);">${rating}</span>/10`;
       } else {
         val = l[r.key] || '-';
       }
@@ -681,12 +953,12 @@ function renderVisualization() {
   
   // Find top recommended community (highest score among non-eliminated ones)
   let topCommunity = null;
-  const validListings = listings.filter(l => {
-    const s = calculateScore(l);
-    return determineGrade(l, s) !== 'D';
-  }).sort((a, b) => {
-    return calculateScore(b) - calculateScore(a);
-  });
+  const validListings = sortListingsByScoreAvailable(
+    listings.filter(l => {
+      const s = calculateScore(l);
+      return determineGrade(l, s) !== 'D' && !l.is_offline;
+    })
+  );
   
   if (validListings.length > 0) {
     topCommunity = validListings[0].community;
@@ -773,16 +1045,7 @@ function renderReport() {
   const container = document.getElementById('report-md-content');
   if (!container) return;
   
-  const sortedListings = [...listings].sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    const gradeA = determineGrade(a, scoreA);
-    const gradeB = determineGrade(b, scoreB);
-    
-    if (gradeA === 'D' && gradeB !== 'D') return 1;
-    if (gradeA !== 'D' && gradeB === 'D') return -1;
-    return scoreB - scoreA;
-  });
+  const sortedListings = sortListingsByScoreAvailable(listings);
   
   if (sortedListings.length === 0) {
     container.innerHTML = `暂无房源数据，无法生成决策报告。`;
@@ -793,8 +1056,8 @@ function renderReport() {
   md += `> 本报告由 **上海租房地图** 理性决策评分引擎自动生成。评测基于 3–5 年长期居住需求，高权重锁定“小区环境、安静度、人车分流、真三房功能与 WFH 书房适配”。\n\n`;
   
   md += `## 1. 候选房源总排名\n\n`;
-  md += `| 排名 | 小区 | 具体房源 | 综合分 | 推荐等级 | 核心理由 | 主要风险 |\n`;
-  md += `| :---: | :--- | :--- | :---: | :---: | :--- | :--- |\n`;
+  md += `| 排名 | 小区 | 具体房源 | 综合分 | 推荐等级 | 状态 | 核心理由 | 主要风险 |\n`;
+  md += `| :---: | :--- | :--- | :---: | :---: | :---: | :--- | :--- |\n`;
   
   let topPick = null;
   let runnerUp = null;
@@ -823,7 +1086,8 @@ function renderReport() {
     const risk = grade === 'D' ? '红线硬伤不可忽视' : 
                  (l.rent > 19000 ? '租金溢价偏高，合同需防涨租风险' : '书房面积偏小或小区散步感弱');
     
-    md += `| ${rankText} | ${l.community} | ${l.unit_id} | ${score} | **${grade}** | ${reason} | ${risk} |\n`;
+    const status = l.is_offline ? '已下架' : '在租';
+    md += `| ${rankText} | ${l.community} | ${l.unit_id} | ${score} | **${grade}** | ${status} | ${reason} | ${risk} |\n`;
   });
   md += `\n---\n\n`;
   
@@ -852,7 +1116,12 @@ function renderReport() {
     md += `1. **小区长期居住质量 (35%)**：**${l.dim_a}分** (绿化、安静、人车分流)\n`;
     md += `2. **户型与室内生活质量 (30%)**：**${l.dim_b}分** (真三房、WFH书房舒适度)\n`;
     md += `3. **租金、合同与性价比 (15%)**：**${l.dim_c}分** (租金压力与合同长租可能)\n`;
-    md += `4. **地段与生活便利 (10%)**：**${l.dim_d}分** (周边散步、地铁商业)\n`;
+    md += `4. **地段与生活便利 (10%)**：**${getEffectiveDimD(l)}分** (含每周3天环球金融中心通勤折算；录入${l.dim_d}分，通勤${l.commute_score_swfc || '-'}分)\n`;
+    if (l.commute_metro) {
+      md += `   - 🚇 地铁：${l.commute_metro}\n`;
+      md += `   - 🚌 公交：${l.commute_bus || '-'}\n`;
+      md += `   - 🚗 自驾：${l.commute_drive || '-'}\n`;
+    }
     md += `5. **规避风险与确定性 (10%)**：**${l.dim_e}分** (楼上邻居、装修老化与房东稳定)\n\n`;
     
     md += `#### 🔍 看房时必须实地确认的细节\n`;
@@ -900,10 +1169,13 @@ function renderChecklist() {
   const oldVal = select.value;
   select.innerHTML = '';
   
-  listings.forEach(l => {
+  sortListingsByScoreAvailable(listings).forEach(l => {
+    const score = calculateScore(l);
+    const grade = determineGrade(l, score);
     const option = document.createElement('option');
     option.value = l.id;
-    option.innerText = `${l.community} - ${l.unit_id}`;
+    const avail = l.is_offline ? ' [已下架]' : '';
+    option.innerText = `${score.toFixed(1)}分·${grade} ${l.community} - ${l.unit_id}${avail}`;
     select.appendChild(option);
   });
   
@@ -953,7 +1225,8 @@ function renderChecklist() {
       items: [
         { id: "ch-d1", text: "周边商业与咖啡馆：步行500米实测是否有便利店、生鲜超市，以及适合偶尔办公/换脑子的咖啡馆。" },
         { id: "ch-d2", text: "可散步绿化空间：出小区5-10分钟，是否连接公园、河边慢跑道或开阔的绿地广场。" },
-        { id: "ch-d3", text: "通勤与交通便利度：实测步行到地铁口真实时间，高德地图核实早高峰去办公室的网约车打车时间与拥堵段。" }
+        { id: "ch-d3", text: "环球金融中心通勤实测：早高峰步行至地铁站计时；2号线直达 vs 换乘方案各走一次；高德导航自驾至世纪大道100号记录平峰/高峰；若开车记录SWFC停车入口与费用。" },
+        { id: "ch-d4", text: "公交备选可信度：雨天试乘983/794等是否比地铁更快，还是仅增加不确定性。" }
       ]
     },
     {

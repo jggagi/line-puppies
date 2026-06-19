@@ -18,7 +18,7 @@
             上海租房地图
             <span id="sync-indicator" style="font-size: 10px; font-weight: 500; padding: 2px 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; color: var(--accent-success); display: none;"></span>
           </h1>
-          <p>3–5年长期居住及居家办公(WFH)理性决策评分引擎</p>
+          <p>3–5年长期居住 · 每周3天陆家嘴环球金融中心 · 4天WFH</p>
         </div>
       </div>
       
@@ -57,7 +57,8 @@
     <section id="tab-dashboard" class="tab-content active" role="tabpanel">
       <div class="dashboard-actions">
         <div class="filter-bar" style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <button class="filter-btn active" data-filter="all">全部房源</button>
+          <button class="filter-btn active" data-filter="available">在租 Available</button>
+          <button class="filter-btn" data-filter="all">全部房源</button>
           <button class="filter-btn" data-filter="S-A">S/A 强烈推荐</button>
           <button class="filter-btn" data-filter="B">B 备选候选</button>
           <button class="filter-btn" data-filter="D">D 红线淘汰</button>
@@ -160,7 +161,7 @@
                   <span class="slider-title">D. 地段与生活便利 (权重 10%)</span>
                   <span class="slider-val"><span id="val-dim-d">7</span>/10</span>
                 </div>
-                <p class="slider-desc">包含：日常商业配套、周边公园绿地、地铁/打车便利度、通勤接受度。</p>
+                <p class="slider-desc">包含：日常商业配套、公园绿地；并折算每周3天至环球金融中心的地铁/公交/自驾通勤（录入分×35% + 通勤分×65%）。</p>
                 <input type="range" id="f-dim-d" class="range-slider" min="1" max="10" step="1" value="7">
               </div>
 
@@ -250,8 +251,13 @@
 
     <!-- Tab 2: Comparison Matrix -->
     <section id="tab-compare" class="tab-content" role="tabpanel">
+      <div class="card" style="margin-bottom: 20px;">
+        <h2 style="margin-bottom: 12px;">🚇 陆家嘴环球金融中心通勤对比</h2>
+        <div id="swfc-commute-panel"></div>
+      </div>
       <div class="card">
-        <h2 style="margin-bottom: 20px;">维度对比矩阵 (侧边横向比较)</h2>
+        <h2 style="margin-bottom: 8px;">维度对比矩阵 (侧边横向比较)</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">列顺序：在租 Available 优先，综合量化得分从高到低；已下架房源排在最后。</p>
         <div class="table-responsive">
           <table class="compare-table" id="compare-table-el">
             <!-- Rendered dynamically in JS -->
@@ -298,8 +304,8 @@
             <h3 style="font-size: 16px; color: var(--accent-primary); margin-bottom: 15px;">💡 关于小区梯队默认印象</h3>
             <ul style="padding-left: 20px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 12px;">
               <li>
-                <strong style="color: var(--text-primary);">第一梯队：上海绿城 / 仁恒河滨城</strong><br>
-                上海绿城绿化和安静氛围极佳，社区生活感成熟；仁恒河滨城地段优渥，国际社区氛围浓，但需防范高容积率下的公区拥挤感。
+                <strong style="color: var(--text-primary);">第一梯队：上海绿城 / 仁恒河滨城 / 四季雅苑</strong><br>
+                上海绿城绿化和安静氛围极佳，社区生活感成熟；仁恒河滨城地段优渥，国际社区氛围浓，但需防范高容积率下的公区拥挤感；四季雅苑为花木世纪公园旁低密标杆（绿化约55%、容积率约0.38），散步与安静度顶级，但租金常高于15k心理线，且部分楼栋需实测无障碍动线。
               </li>
               <li>
                 <strong style="color: var(--text-primary);">第二梯队：爱家亚洲花园 / 涵合园</strong><br>
@@ -344,7 +350,7 @@
         <div class="visualize-header" style="text-align: center; margin-bottom: 30px;">
           <h2 style="font-size: 24px; margin-bottom: 8px;">📊 小区生态指标对比</h2>
           <p style="color: var(--text-secondary); font-size: 14px; max-width: 600px; margin: 0 auto;">
-            系统化呈现 8 大核心候选小区的关键容积率、绿化率及建筑密度。通过对比小区的底层建造数据，能够更科学地分析出哪个小区具备最宽阔的楼间距与最宁静的生活宜居度。
+            系统化呈现 9 大核心候选小区的关键容积率、绿化率及建筑密度。通过对比小区的底层建造数据，能够更科学地分析出哪个小区具备最宽阔的楼间距与最宁静的生活宜居度。
           </p>
         </div>
         
@@ -447,7 +453,7 @@
 
   </main>
 
-  <script src="scraped_data.js?v=202606010359"></script>
-  <script src="app.js?v=202606010359"></script>
+  <script src="scraped_data.js?v=202606022030"></script>
+  <script src="app.js?v=202606022030"></script>
 </body>
 </html>
