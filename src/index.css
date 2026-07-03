@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Dark mode driven by .dark class on html */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg: #f7f7f8;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f1f1f3;
+  --color-border: #e5e5e8;
+  --color-border-strong: #d4d4d8;
+  --color-text: #18181b;
+  --color-text-muted: #6b6b72;
+  --color-text-subtle: #9b9ba3;
+  --color-accent: #6366f1;
+  --color-accent-soft: rgba(99, 102, 241, 0.1);
+  --color-accent-border: rgba(99, 102, 241, 0.35);
+  --color-added: #16a34a;
+  --color-added-soft: rgba(22, 163, 74, 0.12);
+  --color-modified: #d97706;
+  --color-modified-soft: rgba(217, 119, 6, 0.12);
+  --color-removed: #dc2626;
+  --color-removed-soft: rgba(220, 38, 38, 0.12);
+  --color-verified: #16a34a;
+  --color-failed: #dc2626;
+  --color-screen: #2563eb;
+  --color-state: #7c3aed;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Consolas, monospace;
+}
+
+.dark {
+  --color-bg: #0c0d10;
+  --color-bg-elevated: #16171d;
+  --color-bg-subtle: #1c1d24;
+  --color-border: #2a2c36;
+  --color-border-strong: #3a3d4a;
+  --color-text: #ededf0;
+  --color-text-muted: #9b9ba3;
+  --color-text-subtle: #6b6b72;
+  --color-accent: #818cf8;
+  --color-accent-soft: rgba(129, 140, 248, 0.14);
+  --color-accent-border: rgba(129, 140, 248, 0.4);
+  --color-added: #4ade80;
+  --color-added-soft: rgba(74, 222, 128, 0.14);
+  --color-modified: #fbbf24;
+  --color-modified-soft: rgba(251, 191, 36, 0.14);
+  --color-removed: #f87171;
+  --color-removed-soft: rgba(248, 113, 113, 0.14);
+  --color-screen: #60a5fa;
+  --color-state: #a78bfa;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* React Flow overrides */
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__controls {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.react-flow__controls-button {
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  fill: var(--color-text);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--color-bg-subtle);
+}
+
+.react-flow__edge-path {
+  stroke-width: 1.5;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+  animation: dashdraw 0.6s linear infinite;
+}
+
+@keyframes dashdraw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 8px;
+  border: 2px solid var(--color-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-subtle);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
