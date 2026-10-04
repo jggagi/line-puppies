@@ -1,7 +1,12 @@
 // State Management
 let listings = [];
-let currentFilter = 'all';
+let currentFilter = 'available';
 let checkedChecklistItems = {}; // { listingId: { itemId: true/false } }
+let storageBlocked = false;
+let storageBlockReason = '';
+let backupPreviewState = null;
+let storageBaseline = { listings: null, checklist: null };
+let backupSelectionToken = 0;
 
 // Weights
 const WEIGHTS = {
@@ -22,8 +27,202 @@ const COMMUNITY_METRICS = {
   "爱家亚洲花园": { greenery_rate: 0.35, plot_ratio: 2.6, building_density: 0.26 },
   "涵合园": { greenery_rate: 0.50, plot_ratio: 0.9, building_density: 0.15 },
   "锦绣满堂": { greenery_rate: 0.38, plot_ratio: 2.3, building_density: 0.24 },
-  "水清木华": { greenery_rate: 0.28, plot_ratio: 2.5, building_density: 0.28 }
+  "水清木华": { greenery_rate: 0.28, plot_ratio: 2.5, building_density: 0.28 },
+  "四季雅苑": { greenery_rate: 0.55, plot_ratio: 0.38, building_density: 0.12 }
 };
+
+// 办公锚点：每周 3 天陆家嘴环球金融中心（世纪大道100号），其余 4 天 WFH
+const OFFICE_SWFC = {
+  name: '陆家嘴环球金融中心',
+  address: '浦东新区世纪大道100号',
+  workDaysPerWeek: 3,
+  wfhDaysPerWeek: 4
+};
+
+// 各小区 → 环球金融中心：地铁 / 公交 / 自驾（早高峰口径，含到站步行）
+const COMMUTE_TO_SWFC = {
+  "四季雅苑": {
+    nearest_metro: "世纪公园(2号线)约10-12分钟步行；花木路(7号线)约8-10分钟",
+    metro_route: "推荐：步行至世纪公园站 → 2号线至陆家嘴站 → 步行/天桥至环球金融中心（约32-42分钟）",
+    metro_peak_min: 38,
+    bus_route: "983/987路等至龙阳路/世纪公园枢纽再转2号线；无直达，高峰约45-60分钟，仅雨天备选",
+    bus_peak_min: 52,
+    drive_route: "花木路 → 锦绣路/杨高南路 → 内环高架 → 陆家嘴环路",
+    drive_offpeak_min: 22,
+    drive_peak_min: 42,
+    parking_note: "SWFC地下停车约15元/60分钟；每周自驾3天约500-900元/月",
+    commute_score: 8,
+    caveat: "2号线直达优于7号线换乘；自驾早高峰内环陆家嘴段易排队"
+  },
+  "上海绿城": {
+    nearest_metro: "锦绣路/杨高南路(7号线)约6-8分钟步行",
+    metro_route: "7号线至龙阳路站 → 换乘2号线至陆家嘴（约40-50分钟，含换乘步行）",
+    metro_peak_min: 45,
+    bus_route: "794/东周线等经锦绣路浦建路，可至东昌路/陆家嘴环路段，高峰约50-65分钟",
+    bus_peak_min: 55,
+    drive_route: "浦建路/锦绣路 → 杨高南路 → 内环 → 陆家嘴",
+    drive_offpeak_min: 25,
+    drive_peak_min: 45,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 7,
+    caveat: "地铁需一次换乘；794路公交受路况影响大"
+  },
+  "仁恒河滨城": {
+    nearest_metro: "芳甸路(9号线)约8-10分钟步行",
+    metro_route: "9号线至世纪大道站 → 换乘2号线至陆家嘴（约35-45分钟）",
+    metro_peak_min: 40,
+    bus_route: "联洋板块公交少，不建议作为主力；可打车至2号线龙阳路/世纪公园约15分钟",
+    bus_peak_min: 50,
+    drive_route: "罗山路/杨高路 → 内环 → 陆家嘴，约9-11公里",
+    drive_offpeak_min: 20,
+    drive_peak_min: 38,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 8,
+    caveat: "9号线早高峰芳甸路-世纪大道段较挤；自驾平峰体验好"
+  },
+  "香梅花园": {
+    nearest_metro: "世纪公园(2号线)约8-10分钟步行",
+    metro_route: "步行至世纪公园站 → 2号线直达陆家嘴（约28-38分钟，含站内及楼口步行）",
+    metro_peak_min: 33,
+    bus_route: "东周线/794经花木路，可至东昌路附近，高峰约45-55分钟",
+    bus_peak_min: 48,
+    drive_route: "梅花路/白杨路 → 龙阳路 → 内环 → 陆家嘴，约8公里",
+    drive_offpeak_min: 18,
+    drive_peak_min: 35,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 9,
+    caveat: "2号线直达为板块最优轨交方案"
+  },
+  "陆家嘴中央公寓": {
+    nearest_metro: "上海科技馆/世纪公园(2号线)约10-15分钟步行",
+    metro_route: "2号线直达陆家嘴（约25-35分钟，花木板块轨交最近之一）",
+    metro_peak_min: 30,
+    bus_route: "796/583等至东昌路/浦东南路，高峰约35-50分钟",
+    bus_peak_min: 42,
+    drive_route: "锦带路/梅花路 → 内环 → 陆家嘴，约6-8公里",
+    drive_offpeak_min: 15,
+    drive_peak_min: 32,
+    parking_note: "SWFC地下停车约15元/60分钟；自驾3天/周性价比相对最高",
+    commute_score: 9,
+    caveat: "职住距离最近，但需用居住安静度对冲花木路车流"
+  },
+  "联洋年华": {
+    nearest_metro: "芳甸路(9号线)约6-8分钟步行",
+    metro_route: "9号线至世纪大道 → 2号线至陆家嘴（约35-45分钟）",
+    metro_peak_min: 40,
+    bus_route: "联洋内部公交稀疏，不建议依赖",
+    bus_peak_min: 55,
+    drive_route: "芳甸路 → 罗山路 → 内环 → 陆家嘴",
+    drive_offpeak_min: 20,
+    drive_peak_min: 38,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 8,
+    caveat: "与仁恒类似，轨交一次换乘"
+  },
+  "爱家亚洲花园": {
+    nearest_metro: "东三里桥/临沂新村(6号线)约10-15分钟步行",
+    metro_route: "6号线至世纪大道 → 2号线至陆家嘴（约45-55分钟，两次换乘动线）",
+    metro_peak_min: 50,
+    bus_route: "781/610等至浦东南路，高峰约50-70分钟",
+    bus_peak_min: 58,
+    drive_route: "浦三路/东方路 → 南浦大桥/内环 → 陆家嘴",
+    drive_offpeak_min: 22,
+    drive_peak_min: 45,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 7,
+    caveat: "轨交换乘多，早高峰南浦/内环段波动大"
+  },
+  "涵合园": {
+    nearest_metro: "最近为芳甸路/世纪公园，步行或骑行约15-20分钟",
+    metro_route: "需先接驳至9号线或2号线，全程约50-65分钟，不适合作为3天通勤主力",
+    metro_peak_min: 58,
+    bus_route: "几乎无可靠直达线路，依赖打车接驳",
+    bus_peak_min: 65,
+    drive_route: "锦绣路 → 内环 → 陆家嘴，约10-12公里",
+    drive_offpeak_min: 25,
+    drive_peak_min: 48,
+    parking_note: "轨交弱时自驾更现实，但高峰时间不可控",
+    commute_score: 5,
+    caveat: "职住通勤是明显短板，仅适合WFH占比更高的方案"
+  },
+  "锦绣满堂": {
+    nearest_metro: "芳甸路(9号线)约10-12分钟步行",
+    metro_route: "9号线至世纪大道 → 2号线至陆家嘴（约38-48分钟）",
+    metro_peak_min: 43,
+    bus_route: "联洋公交少，不建议",
+    bus_peak_min: 55,
+    drive_route: "锦绣路 → 内环 → 陆家嘴",
+    drive_offpeak_min: 22,
+    drive_peak_min: 40,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 8,
+    caveat: "轨交与联洋年华/仁恒接近"
+  },
+  "水清木华": {
+    nearest_metro: "世纪公园(2号线)约5-8分钟步行",
+    metro_route: "2号线直达陆家嘴（约25-35分钟）",
+    metro_peak_min: 30,
+    bus_route: "796等至东昌路，高峰约40-55分钟",
+    bus_peak_min: 45,
+    drive_route: "锦带路 → 内环 → 陆家嘴，约7公里",
+    drive_offpeak_min: 16,
+    drive_peak_min: 35,
+    parking_note: "SWFC地下停车约15元/60分钟",
+    commute_score: 9,
+    caveat: "轨交近但小区品质红线需单独评估"
+  }
+};
+
+function getCommuteProfile(community) {
+  if (!community) return null;
+  if (COMMUTE_TO_SWFC[community]) return COMMUTE_TO_SWFC[community];
+  const key = Object.keys(COMMUTE_TO_SWFC).find(k => community.includes(k) || k.includes(community));
+  return key ? COMMUTE_TO_SWFC[key] : null;
+}
+
+function getEffectiveDimD(listing) {
+  const profile = getCommuteProfile(listing.community);
+  const manual = listing.dim_d ?? 7;
+  if (!profile) return manual;
+  return Math.min(10, Math.max(1, Math.round(manual * 0.35 + profile.commute_score * 0.65)));
+}
+
+function enrichListingSwfcCommute(listing) {
+  const p = getCommuteProfile(listing.community);
+  if (!p) return;
+  listing.commute_office = OFFICE_SWFC.name;
+  listing.commute_metro = p.metro_route;
+  listing.commute_bus = p.bus_route;
+  listing.commute_drive = `${p.drive_route}（平峰约${p.drive_offpeak_min}分钟，早高峰约${p.drive_peak_min}分钟）`;
+  listing.commute_parking = p.parking_note;
+  listing.commute_peak_metro_min = p.metro_peak_min;
+  listing.commute_peak_drive_min = p.drive_peak_min;
+  listing.commute_score_swfc = p.commute_score;
+  listing.commute = `【每周${OFFICE_SWFC.workDaysPerWeek}天·${OFFICE_SWFC.name}】🚇 ${p.metro_route} | 🚌 ${p.bus_route} | 🚗 ${listing.commute_drive}。${p.caveat || ''}`;
+}
+
+function enrichAllListingsSwfcCommute() {
+  listings.forEach(enrichListingSwfcCommute);
+}
+
+/** 在租优先 → 非红线 → 综合分从高到低 */
+function sortListingsByScoreAvailable(items) {
+  return [...items].sort((a, b) => {
+    const aOff = !!a.is_offline;
+    const bOff = !!b.is_offline;
+    if (aOff !== bOff) return aOff ? 1 : -1;
+
+    const scoreA = calculateScore(a);
+    const scoreB = calculateScore(b);
+    const gradeA = determineGrade(a, scoreA);
+    const gradeB = determineGrade(b, scoreB);
+    if (gradeA === 'D' && gradeB !== 'D') return 1;
+    if (gradeA !== 'D' && gradeB === 'D') return -1;
+
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return (a.community || '').localeCompare(b.community || '', 'zh-CN');
+  });
+}
 
 
 // Default Listings Data (High Fidelity Mock)
@@ -272,16 +471,52 @@ const DEFAULT_LISTINGS = [
     rl_property_bad: true,  // Triggers Red Line 4
     rl_lease_unstable: false,
     is_offline: false
+  },
+  {
+    id: "lst-SH30782910",
+    community: "四季雅苑",
+    unit_id: "3室 / 8/12层 / 128㎡",
+    rent: 16800,
+    area_sqm: 128,
+    bedroom_count: 3,
+    has_independent_study: true,
+    floor: "8/12层",
+    orientation: "南北",
+    layout_comment: "花木世纪公园旁和黄低密社区内公寓三房，南北通透正气。北向次卧可作独立书房，窗景面向内部浓荫绿地，安静度与采光均优，极适合长期 WFH。需现场确认楼栋入口是否有台阶——部分低密组团对轮椅推行不够友好。",
+    renovation: "经典精装保养良好",
+    noise_risk: "极低噪音，远离主干道，内部环路仅有偶发邻里步行声",
+    greenery: "和记黄埔打造的花木低密标杆，绿化率高达55%，内部林荫步道与中央绿地极具散步质感，紧邻世纪公园延伸绿廊",
+    car_pedestrian_separation: "低密别墅区人车分流严格，主干道车流极少，步行环道安静安全",
+    property_management: "和记物业口碑稳定，公区保洁与绿化修剪频率高，门禁与访客管理较严",
+    community_atmosphere: "高端自住为主，外籍与高管家庭占比高，社区氛围安静有序，整体熵值极低",
+    daily_convenience: "步行可达世纪公园与大拇指广场，2号线世纪公园站约800-1000米，生活医疗配套成熟",
+    commute: "打车到陆家嘴约15-20分钟，世纪公园站地铁便利，雨天打车接单率高",
+    lease_terms: "押一付三，可谈3年长约，但房东普遍对涨幅保留5%以内调整空间",
+    landlord_risk: "中低风险。标的稀缺租金偏高，多数房东持有多套资产，愿意长租但难完全锁死不涨租",
+    viewing_notes: "小区散步质感接近香梅/绿城第一梯队，公区极静。务必实测：① 楼栋到电梯/入户是否有台阶；② 书房窗景是否被乔木冬季挡光；③ 同户型挂牌价是否明显高于15k心理线。",
+    dim_a: 10,
+    dim_b: 8,
+    dim_c: 7,
+    dim_d: 9,
+    dim_e: 8,
+    rl_not_three_bed: false,
+    rl_car_messy: false,
+    'rl_wfh-bad': false,
+    rl_wfh_bad: false,
+    rl_property_bad: false,
+    rl_lease_unstable: false,
+    is_offline: false
   }
 ];
 
 // Helper: Calculate Score out of 100 based on weights
 function calculateScore(listing) {
+  const dimD = getEffectiveDimD(listing);
   const score = (
     listing.dim_a * WEIGHTS.a +
     listing.dim_b * WEIGHTS.b +
     listing.dim_c * WEIGHTS.c +
-    listing.dim_d * WEIGHTS.d +
+    dimD * WEIGHTS.d +
     listing.dim_e * WEIGHTS.e
   ) * 10;
   return Math.round(score * 10) / 10; // Round to 1 decimal place
@@ -296,13 +531,13 @@ function determineGrade(listing, score) {
     listing.rl_wfh_bad ||
     listing.rl_property_bad || 
     listing.rl_lease_unstable;
-  
+
   if (isRedLineTriggered) {
     return 'D'; // Eliminated
   }
   
   if (score >= 85) {
-    const isTier1 = listing.community.includes('绿城') || listing.community.includes('仁恒');
+    const isTier1 = listing.community.includes('绿城') || listing.community.includes('仁恒') || listing.community.includes('四季雅苑');
     return isTier1 ? 'S' : 'A';
   } else if (score >= 75) {
     return 'A';
@@ -314,39 +549,67 @@ function determineGrade(listing, score) {
 }
 
 // Save & Load State
-function saveState() {
+function saveState(nextListings = listings, nextChecklist = checkedChecklistItems, options = {}) {
+  if (storageBlocked && !options.allowCorruptRecovery) {
+    const reason = storageBlockReason === 'RECOVERY_REQUIRED'
+      ? '上次保存未能完整恢复，普通保存已暂停。'
+      : storageBlockReason === 'INTERRUPTED_WRITE'
+        ? '检测到未完成的保存，普通保存已暂停。'
+        : '本地记录格式损坏或不受支持，普通保存已暂停。';
+    setBackupStatus(`${reason}原始记录未更改；请先下载恢复副本，再应用有效完整备份或明确重置。`, 'error');
+    return false;
+  }
   // Ensure every listing is fully populated with community ecological metrics
-  listings.forEach(l => {
+  const candidateListings = nextListings.map(l => ({ ...l }));
+  candidateListings.forEach(l => {
     const metrics = COMMUNITY_METRICS[l.community] || { greenery_rate: 0.35, plot_ratio: 2.2, building_density: 0.23 };
     l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
     l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
     l.building_density = l.building_density || metrics.building_density;
+    enrichListingSwfcCommute(l);
   });
-  localStorage.setItem('sh_rental_map_listings', JSON.stringify(listings));
-  localStorage.setItem('sh_rental_map_checklist', JSON.stringify(checkedChecklistItems));
-  updateStats();
+  try {
+    const saved = RentBackup.persistPair(localStorage, candidateListings, nextChecklist, new Date(), storageBaseline);
+    listings = saved.listings;
+    checkedChecklistItems = saved.checklist;
+    storageBaseline = { listings: saved.rawListings, checklist: saved.rawChecklist };
+    storageBlocked = false;
+    storageBlockReason = '';
+    setBackupStatus('本地记录已安全保存；上一个有效版本保留在恢复副本中。', 'success');
+    updateStats();
+    return true;
+  } catch (error) {
+    if (error && error.rollbackComplete === false) {
+      storageBlocked = true;
+      storageBlockReason = 'RECOVERY_REQUIRED';
+    }
+    setBackupStatus(error && error.message ? error.message : '本地保存失败，原记录已保留。', 'error');
+    return false;
+  }
 }
 
 function loadState() {
-  const storedListings = localStorage.getItem('sh_rental_map_listings');
-  const storedChecklist = localStorage.getItem('sh_rental_map_checklist');
-  
-  if (storedListings) {
-    listings = JSON.parse(storedListings);
+  const stored = RentBackup.readStoredState(localStorage, DEFAULT_LISTINGS);
+  storageBaseline = { listings: stored.rawListings, checklist: stored.rawChecklist };
+  if (stored.ok) {
+    listings = stored.listings;
+    checkedChecklistItems = stored.checklist;
   } else {
-    listings = [...DEFAULT_LISTINGS];
-    saveState();
-  }
-  
-  if (storedChecklist) {
-    checkedChecklistItems = JSON.parse(storedChecklist);
-  } else {
+    storageBlocked = true;
+    storageBlockReason = stored.errorCode;
+    listings = DEFAULT_LISTINGS.map(item => ({ ...item }));
     checkedChecklistItems = {};
+    const reason = storageBlockReason === 'INTERRUPTED_WRITE'
+      ? '检测到未完成的保存'
+      : '本地记录格式损坏或不受支持';
+    setBackupStatus(`${reason}；原始记录未更改，已暂停保存。可下载原始恢复文件或应用有效完整备份。`, 'error');
   }
 
-  // Live Sync Ingestion Loop from Scraper (CORS-safe window.scrapedListings)
-  if (window.scrapedListings && Array.isArray(window.scrapedListings)) {
-    console.log(`Live Scraper: Detected ${window.scrapedListings.length} synced listings.`);
+  // Scraper data is a read-only in-memory view until the user explicitly saves.
+  if (!storageBlocked && window.scrapedListings && Array.isArray(window.scrapedListings)) {
+    let scrapedListings;
+    try { scrapedListings = RentBackup.validateListings(window.scrapedListings); }
+    catch (_) { scrapedListings = []; setBackupStatus('同步数据格式无效，未加载这批数据；本地记录未更改。', 'error'); }
     
     const indicator = document.getElementById('sync-indicator');
     if (indicator && window.scrapedListingsLastSync) {
@@ -360,7 +623,8 @@ function loadState() {
       }
     });
 
-    window.scrapedListings.forEach(scraped => {
+    scrapedListings.forEach(scraped => {
+      enrichListingSwfcCommute(scraped);
       const existingIndex = listings.findIndex(l => l.id === scraped.id);
       if (existingIndex >= 0) {
         listings[existingIndex].rent = scraped.rent;
@@ -368,6 +632,7 @@ function loadState() {
         listings[existingIndex].floor = scraped.floor;
         listings[existingIndex].orientation = scraped.orientation;
         listings[existingIndex].is_offline = false;
+        enrichListingSwfcCommute(listings[existingIndex]);
       } else {
         listings.push(scraped);
       }
@@ -381,17 +646,43 @@ function loadState() {
       l.building_density = l.building_density || metrics.building_density;
     });
 
-    saveState();
+    enrichAllListingsSwfcCommute();
   } else {
-    // If no sync happened but loaded from storage, still align metrics
-    listings.forEach(l => {
-      const metrics = COMMUNITY_METRICS[l.community] || { greenery_rate: 0.35, plot_ratio: 2.2, building_density: 0.23 };
-      l.greenery_rate = l.greenery_rate || metrics.greenery_rate;
-      l.plot_ratio = l.plot_ratio || metrics.plot_ratio;
-      l.building_density = l.building_density || metrics.building_density;
-    });
-    saveState();
+    enrichAllListingsSwfcCommute();
   }
+}
+
+function setBackupStatus(message, kind = 'info') {
+  const status = document.getElementById('backup-status');
+  const globalStatus = document.getElementById('app-save-status');
+  [status, globalStatus].filter(Boolean).forEach((node) => {
+    node.textContent = message;
+    node.dataset.state = kind;
+    if (node === globalStatus) {
+      node.hidden = false;
+      node.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+      node.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite');
+    }
+  });
+  syncBackupRecoveryControls();
+}
+
+function syncBackupRecoveryControls() {
+  const rawDownload = document.getElementById('backup-raw-download');
+  if (rawDownload) rawDownload.hidden = !storageBlocked;
+  const previousExport = document.getElementById('backup-previous-export');
+  if (previousExport) {
+    try { previousExport.hidden = localStorage.getItem(RentBackup.RECOVERY_KEY) === null; }
+    catch (_) { previousExport.hidden = true; }
+  }
+}
+
+function renderAllViews() {
+  updateStats();
+  renderDashboard();
+  renderCompareMatrix();
+  renderReport();
+  renderChecklist();
 }
 
 // Update Header Stats
@@ -435,6 +726,7 @@ function renderDashboard() {
     
     let matchesTier = true;
     if (currentFilter === 'all') matchesTier = true;
+    else if (currentFilter === 'available') matchesTier = !listing.is_offline;
     else if (currentFilter === 'S-A') matchesTier = (grade === 'S' || grade === 'A');
     else if (currentFilter === 'B') matchesTier = (grade === 'B');
     else if (currentFilter === 'D') matchesTier = (grade === 'D');
@@ -444,18 +736,9 @@ function renderDashboard() {
     return matchesTier && matchesBudget;
   });
   
-  filteredListings.sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    const gradeA = determineGrade(a, scoreA);
-    const gradeB = determineGrade(b, scoreB);
-    
-    if (gradeA === 'D' && gradeB !== 'D') return 1;
-    if (gradeA !== 'D' && gradeB === 'D') return -1;
-    return scoreB - scoreA;
-  });
+  const sortedListings = sortListingsByScoreAvailable(filteredListings);
   
-  if (filteredListings.length === 0) {
+  if (sortedListings.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1;">
         <div style="font-size: 48px;">🔍</div>
@@ -465,10 +748,11 @@ function renderDashboard() {
     return;
   }
   
-  filteredListings.forEach((listing, index) => {
+  sortedListings.forEach((listing, index) => {
     const score = calculateScore(listing);
     const grade = determineGrade(listing, score);
     const globalIndex = listings.findIndex(l => l.id === listing.id);
+    const rankLabel = listing.is_offline ? '' : `<span style="font-size:11px;font-weight:700;color:var(--accent-primary);margin-right:6px;">#${index + 1}</span>`;
     
     const card = document.createElement('div');
     card.className = `card property-card ${grade === 'D' ? 'eliminated' : ''} ${grade === 'S' ? 'highly-recommended' : ''} ${listing.is_offline ? 'offline' : ''}`;
@@ -495,20 +779,12 @@ function renderDashboard() {
     
     const offlineBadge = listing.is_offline ? '<span class="badge-offline">已下架</span>' : '';
     
-    let lianjiaUrl = listing.detail_url;
-    if (!lianjiaUrl || !lianjiaUrl.startsWith('http')) {
-      if (listing.id.startsWith('lst-SH')) {
-        const lianjiaId = listing.id.replace('lst-', '');
-        lianjiaUrl = `https://sh.lianjia.com/zufang/${lianjiaId}.html`;
-      } else {
-        lianjiaUrl = `https://sh.lianjia.com/zufang/rs${encodeURIComponent(listing.community)}/`;
-      }
-    }
+    const lianjiaUrl = safeListingUrl(listing);
     
     card.innerHTML = `
       <div class="property-header">
         <div class="property-title">
-          <h3>${escapeHtml(listing.community)}${offlineBadge}</h3>
+          <h3>${rankLabel}${escapeHtml(listing.community)}${offlineBadge}</h3>
           <p>${escapeHtml(listing.unit_id)}</p>
         </div>
         <div class="badge-grade grade-${grade}">${grade}</div>
@@ -529,6 +805,7 @@ function renderDashboard() {
         <div class="badge-ecology green" title="小区成熟绿化率">🌳 绿化 ${Math.round((listing.greenery_rate || 0.35) * 100)}%</div>
         <div class="badge-ecology purple" title="小区开发容积率">🏢 容积率 ${(listing.plot_ratio || 2.2).toFixed(1)}</div>
         <div class="badge-ecology gold" title="建筑基底密度">📐 密度 ${Math.round((listing.building_density || 0.23) * 100)}%</div>
+        ${listing.commute_peak_metro_min ? `<div class="badge-ecology" style="border-color: rgba(59,130,246,0.35); color: var(--accent-primary);" title="早高峰地铁至环球金融中心">🚇 地铁约${listing.commute_peak_metro_min}分</div><div class="badge-ecology" style="border-color: rgba(245,158,11,0.35); color: #f59e0b;" title="早高峰自驾">🚗 自驾约${listing.commute_peak_drive_min}分</div>` : ''}
       </div>
       
       <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
@@ -548,7 +825,7 @@ function renderDashboard() {
       ${redLinesHtml}
       
       <div class="property-actions">
-        <a href="${lianjiaUrl}" target="_blank" class="btn btn-secondary btn-icon" style="color: var(--accent-primary); border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); text-decoration: none;" title="跳转到链家页面">🔗 链家直达</a>
+        <a href="${escapeHtml(lianjiaUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-icon" style="color: var(--accent-primary); border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); text-decoration: none;" title="跳转到链家页面">🔗 链家直达</a>
         <button class="btn btn-secondary btn-icon" onclick="editListing(${globalIndex})" title="评测打分">✏️ 评测打分</button>
         <button class="btn btn-danger btn-icon" style="margin-left: auto;" onclick="deleteListing(${globalIndex})" title="删除房源">🗑️ 删除</button>
       </div>
@@ -558,22 +835,63 @@ function renderDashboard() {
   });
 }
 
+// 陆家嘴环球金融中心通勤对比（按小区去重）
+function renderSwfcCommutePanel() {
+  const panel = document.getElementById('swfc-commute-panel');
+  if (!panel) return;
+
+  const communities = [...new Set(listings.map(l => l.community))].filter(c => getCommuteProfile(c));
+  if (communities.length === 0) {
+    panel.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">暂无通勤数据。</p>';
+    return;
+  }
+
+  const sorted = communities
+    .map(name => ({ name, profile: getCommuteProfile(name) }))
+    .sort((a, b) => a.profile.metro_peak_min - b.profile.metro_peak_min);
+
+  let html = `
+    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+      办公锚点：<strong>${OFFICE_SWFC.name}</strong>（${OFFICE_SWFC.address}）·
+      每周 <strong>${OFFICE_SWFC.workDaysPerWeek}</strong> 天到岗 /
+      <strong>${OFFICE_SWFC.wfhDaysPerWeek}</strong> 天居家。
+      D 维度评分已按「地铁 65% + 生活配套 35%」折算进综合分。
+    </p>
+    <div class="table-responsive">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>小区</th>
+            <th>🚇 地铁（早高峰）</th>
+            <th>🚌 公交</th>
+            <th>🚗 自驾（平峰/高峰）</th>
+            <th>通勤分</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+  sorted.forEach(({ name, profile: p }) => {
+    html += `<tr>
+      <td style="font-weight: 600;">${escapeHtml(name)}</td>
+      <td style="font-size: 12px;">${escapeHtml(p.metro_route)}<br><span style="color: var(--accent-primary);">约 ${p.metro_peak_min} 分钟</span></td>
+      <td style="font-size: 12px;">${escapeHtml(p.bus_route)}</td>
+      <td style="font-size: 12px;">${escapeHtml(p.drive_route)}<br>平峰 ~${p.drive_offpeak_min}分 / 高峰 ~${p.drive_peak_min}分<br><span style="color: var(--text-muted);">${escapeHtml(p.parking_note)}</span></td>
+      <td style="text-align: center; font-weight: 700;">${p.commute_score}/10</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  panel.innerHTML = html;
+}
+
 // Side-by-side Comparison Matrix
 function renderCompareMatrix() {
+  renderSwfcCommutePanel();
   const table = document.getElementById('compare-table-el');
   if (!table) return;
   table.innerHTML = '';
   
-  const activeListings = listings.filter(l => true).sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    const gradeA = determineGrade(a, scoreA);
-    const gradeB = determineGrade(b, scoreB);
-    
-    if (gradeA === 'D' && gradeB !== 'D') return 1;
-    if (gradeA !== 'D' && gradeB === 'D') return -1;
-    return scoreB - scoreA;
-  });
+  const activeListings = sortListingsByScoreAvailable(listings);
   
   if (activeListings.length === 0) {
     table.innerHTML = `<tr><td style="text-align: center; padding: 40px; color: var(--text-muted);">暂无房源数据。</td></tr>`;
@@ -584,15 +902,8 @@ function renderCompareMatrix() {
     { label: '房源小区', key: 'community' },
     { label: '房源标识', key: 'unit_id' },
     { label: '租房链接', key: 'id', format: (val, l) => {
-      let url = l.detail_url;
-      if (!url || !url.startsWith('http')) {
-        if (l.id.startsWith('lst-SH')) {
-          url = `https://sh.lianjia.com/zufang/${l.id.replace('lst-', '')}.html`;
-        } else {
-          url = `https://sh.lianjia.com/zufang/rs${encodeURIComponent(l.community)}/`;
-        }
-      }
-      return `<a href="${url}" target="_blank" style="color: var(--accent-primary); text-decoration: underline; font-weight: 500;">🔗 链家直达</a>`;
+      const url = safeListingUrl(l);
+      return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-primary); text-decoration: underline; font-weight: 500;">🔗 链家直达</a>`;
     } },
     { label: '决策评级', key: 'grade' },
     { label: '综合评分', key: 'score' },
@@ -600,22 +911,32 @@ function renderCompareMatrix() {
     { label: '套内/建面', key: 'area_sqm', format: val => `${val} ㎡` },
     { label: '房间数', key: 'bedroom_count', format: val => `${val} 房` },
     { label: '独立书房', key: 'has_independent_study', format: val => val ? '✅ 有' : '❌ 无' },
-    { label: '楼层朝向', key: 'floor_orient', format: (v, l) => `${l.floor} / ${l.orientation}` },
+    { label: '楼层朝向', key: 'floor_orient', format: (v, l) => `${escapeHtml(l.floor || '-')} / ${escapeHtml(l.orientation || '-')}` },
     { label: '室内装修', key: 'renovation' },
     { label: '户型评价', key: 'layout_comment' },
     
     { label: 'A. 小区长期居住 (35%)', key: 'dim_a', isScore: true },
     { label: 'B. 户型与WFH质量 (30%)', key: 'dim_b', isScore: true },
     { label: 'C. 租金性价比 (15%)', key: 'dim_c', isScore: true },
-    { label: 'D. 地段生活便利 (10%)', key: 'dim_d', isScore: true },
+    { label: 'D. 地段便利 (10%,含通勤折算)', key: 'dim_d', isScore: true, format: (v, l) => {
+      const eff = getEffectiveDimD(l);
+      const raw = l.dim_d ?? '-';
+      return eff !== raw ? `${eff} <span style="font-size:11px;color:var(--text-muted)">(录入${raw}×35%+通勤${l.commute_score_swfc || '-'}×65%)</span>` : `${eff}`;
+    }},
     { label: 'E. 风险与不确定 (10%)', key: 'dim_e', isScore: true },
+    { label: '🚇 地铁→环球金融中心', key: 'commute_metro' },
+    { label: '🚌 公交备选', key: 'commute_bus' },
+    { label: '🚗 自驾路线', key: 'commute_drive' },
+    { label: '🅿️ 停车与成本', key: 'commute_parking' },
+    { label: '早高峰地铁约(分钟)', key: 'commute_peak_metro_min' },
+    { label: '早高峰自驾约(分钟)', key: 'commute_peak_drive_min' },
     
     { label: '小区绿化与散步感', key: 'greenery' },
     { label: '小区人车分流', key: 'car_pedestrian_separation' },
     { label: '物业管理与安全', key: 'property_management' },
     { label: '社区氛围与邻里', key: 'community_atmosphere' },
     { label: '生活商业便利性', key: 'daily_convenience' },
-    { label: '地段与通勤评价', key: 'commute' },
+    { label: '综合通勤摘要', key: 'commute' },
     { label: '合同条款与长租稳定性', key: 'lease_terms' },
     { label: '房东套现/自住风险', key: 'landlord_risk' },
     { label: '看房实地备注', key: 'viewing_notes' }
@@ -645,13 +966,13 @@ function renderCompareMatrix() {
         val = `<span class="badge-grade grade-${grade}" style="width: 28px; height: 28px; font-size: 13px; display: inline-flex; margin: 0 auto;">${grade}</span>`;
       } else if (r.key === 'score') {
         val = `<strong style="font-size: 16px; color: ${grade === 'D' ? 'var(--accent-danger)' : 'var(--accent-success)'};">${score}</strong> / 100`;
-      } else if (r.isScore) {
-        const rating = l[r.key];
-        val = `<span style="font-weight: 600; color: var(--accent-primary);">${rating}</span>/10`;
       } else if (r.format) {
         val = r.format(l[r.key], l);
+      } else if (r.isScore) {
+        const rating = r.key === 'dim_d' ? getEffectiveDimD(l) : l[r.key];
+        val = `<span style="font-weight: 600; color: var(--accent-primary);">${rating}</span>/10`;
       } else {
-        val = l[r.key] || '-';
+        val = escapeHtml(l[r.key] ?? '-');
       }
       
       let cellStyle = '';
@@ -681,12 +1002,12 @@ function renderVisualization() {
   
   // Find top recommended community (highest score among non-eliminated ones)
   let topCommunity = null;
-  const validListings = listings.filter(l => {
-    const s = calculateScore(l);
-    return determineGrade(l, s) !== 'D';
-  }).sort((a, b) => {
-    return calculateScore(b) - calculateScore(a);
-  });
+  const validListings = sortListingsByScoreAvailable(
+    listings.filter(l => {
+      const s = calculateScore(l);
+      return determineGrade(l, s) !== 'D' && !l.is_offline;
+    })
+  );
   
   if (validListings.length > 0) {
     topCommunity = validListings[0].community;
@@ -773,16 +1094,7 @@ function renderReport() {
   const container = document.getElementById('report-md-content');
   if (!container) return;
   
-  const sortedListings = [...listings].sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    const gradeA = determineGrade(a, scoreA);
-    const gradeB = determineGrade(b, scoreB);
-    
-    if (gradeA === 'D' && gradeB !== 'D') return 1;
-    if (gradeA !== 'D' && gradeB === 'D') return -1;
-    return scoreB - scoreA;
-  });
+  const sortedListings = sortListingsByScoreAvailable(listings);
   
   if (sortedListings.length === 0) {
     container.innerHTML = `暂无房源数据，无法生成决策报告。`;
@@ -793,8 +1105,8 @@ function renderReport() {
   md += `> 本报告由 **上海租房地图** 理性决策评分引擎自动生成。评测基于 3–5 年长期居住需求，高权重锁定“小区环境、安静度、人车分流、真三房功能与 WFH 书房适配”。\n\n`;
   
   md += `## 1. 候选房源总排名\n\n`;
-  md += `| 排名 | 小区 | 具体房源 | 综合分 | 推荐等级 | 核心理由 | 主要风险 |\n`;
-  md += `| :---: | :--- | :--- | :---: | :---: | :--- | :--- |\n`;
+  md += `| 排名 | 小区 | 具体房源 | 综合分 | 推荐等级 | 状态 | 核心理由 | 主要风险 |\n`;
+  md += `| :---: | :--- | :--- | :---: | :---: | :---: | :--- | :--- |\n`;
   
   let topPick = null;
   let runnerUp = null;
@@ -823,7 +1135,8 @@ function renderReport() {
     const risk = grade === 'D' ? '红线硬伤不可忽视' : 
                  (l.rent > 19000 ? '租金溢价偏高，合同需防涨租风险' : '书房面积偏小或小区散步感弱');
     
-    md += `| ${rankText} | ${l.community} | ${l.unit_id} | ${score} | **${grade}** | ${reason} | ${risk} |\n`;
+    const status = l.is_offline ? '已下架' : '在租';
+    md += `| ${rankText} | ${l.community} | ${l.unit_id} | ${score} | **${grade}** | ${status} | ${reason} | ${risk} |\n`;
   });
   md += `\n---\n\n`;
   
@@ -852,7 +1165,12 @@ function renderReport() {
     md += `1. **小区长期居住质量 (35%)**：**${l.dim_a}分** (绿化、安静、人车分流)\n`;
     md += `2. **户型与室内生活质量 (30%)**：**${l.dim_b}分** (真三房、WFH书房舒适度)\n`;
     md += `3. **租金、合同与性价比 (15%)**：**${l.dim_c}分** (租金压力与合同长租可能)\n`;
-    md += `4. **地段与生活便利 (10%)**：**${l.dim_d}分** (周边散步、地铁商业)\n`;
+    md += `4. **地段与生活便利 (10%)**：**${getEffectiveDimD(l)}分** (含每周3天环球金融中心通勤折算；录入${l.dim_d}分，通勤${l.commute_score_swfc || '-'}分)\n`;
+    if (l.commute_metro) {
+      md += `   - 🚇 地铁：${l.commute_metro}\n`;
+      md += `   - 🚌 公交：${l.commute_bus || '-'}\n`;
+      md += `   - 🚗 自驾：${l.commute_drive || '-'}\n`;
+    }
     md += `5. **规避风险与确定性 (10%)**：**${l.dim_e}分** (楼上邻居、装修老化与房东稳定)\n\n`;
     
     md += `#### 🔍 看房时必须实地确认的细节\n`;
@@ -900,10 +1218,13 @@ function renderChecklist() {
   const oldVal = select.value;
   select.innerHTML = '';
   
-  listings.forEach(l => {
+  sortListingsByScoreAvailable(listings).forEach(l => {
+    const score = calculateScore(l);
+    const grade = determineGrade(l, score);
     const option = document.createElement('option');
     option.value = l.id;
-    option.innerText = `${l.community} - ${l.unit_id}`;
+    const avail = l.is_offline ? ' [已下架]' : '';
+    option.innerText = `${score.toFixed(1)}分·${grade} ${l.community} - ${l.unit_id}${avail}`;
     select.appendChild(option);
   });
   
@@ -953,7 +1274,8 @@ function renderChecklist() {
       items: [
         { id: "ch-d1", text: "周边商业与咖啡馆：步行500米实测是否有便利店、生鲜超市，以及适合偶尔办公/换脑子的咖啡馆。" },
         { id: "ch-d2", text: "可散步绿化空间：出小区5-10分钟，是否连接公园、河边慢跑道或开阔的绿地广场。" },
-        { id: "ch-d3", text: "通勤与交通便利度：实测步行到地铁口真实时间，高德地图核实早高峰去办公室的网约车打车时间与拥堵段。" }
+        { id: "ch-d3", text: "环球金融中心通勤实测：早高峰步行至地铁站计时；2号线直达 vs 换乘方案各走一次；高德导航自驾至世纪大道100号记录平峰/高峰；若开车记录SWFC停车入口与费用。" },
+        { id: "ch-d4", text: "公交备选可信度：雨天试乘983/794等是否比地铁更快，还是仅增加不确定性。" }
       ]
     },
     {
@@ -993,12 +1315,10 @@ function renderChecklist() {
 
 // Toggle checklist item status
 window.toggleChecklistItem = function(listingId, itemId) {
-  if (!checkedChecklistItems[listingId]) {
-    checkedChecklistItems[listingId] = {};
-  }
-  
-  checkedChecklistItems[listingId][itemId] = !checkedChecklistItems[listingId][itemId];
-  saveState();
+  const nextChecklist = Object.fromEntries(Object.entries(checkedChecklistItems).map(([id, items]) => [id, { ...items }]));
+  if (!nextChecklist[listingId]) nextChecklist[listingId] = {};
+  nextChecklist[listingId][itemId] = !nextChecklist[listingId][itemId];
+  saveState(listings, nextChecklist);
   renderChecklist();
 };
 
@@ -1013,6 +1333,14 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
+function safeListingUrl(listing) {
+  if (RentBackup.safeHttpUrl(listing.detail_url)) return listing.detail_url;
+  if (listing.id.startsWith('lst-SH')) {
+    return `https://sh.lianjia.com/zufang/${encodeURIComponent(listing.id.slice(4))}.html`;
+  }
+  return `https://sh.lianjia.com/zufang/rs${encodeURIComponent(listing.community)}/`;
+}
+
 // Add/Edit listing form submit
 document.getElementById('listing-form').addEventListener('submit', function(e) {
   e.preventDefault();
@@ -1023,7 +1351,7 @@ document.getElementById('listing-form').addEventListener('submit', function(e) {
     return;
   }
   
-  const listing = listings[editIndex];
+  const listing = { ...listings[editIndex] };
   
   // Only update curation parameters
   listing.layout_comment = document.getElementById('f-layout-comment').value.trim();
@@ -1052,7 +1380,8 @@ document.getElementById('listing-form').addEventListener('submit', function(e) {
   listing.property_management = listing.rl_property_bad ? "物业极其混乱，公区卫生与安保堪忧" : (listing.dim_a >= 8 ? "高品质物业维护，保洁高频，绿化精细" : "普通物业，安保与保洁维护正常");
   listing.landlord_risk = listing.rl_lease_unstable ? "高变卖收回风险" : (listing.dim_e >= 8 ? "房东为高净值投资，不自住不卖，配合长约" : "房东正常持有，可能面临资产重组诉求");
   
-  saveState();
+  const nextListings = listings.map((item, index) => index === editIndex ? listing : item);
+  if (!saveState(nextListings, checkedChecklistItems)) return;
   closeForm();
   
   // Render active tab views
@@ -1080,15 +1409,7 @@ window.editListing = function(index) {
   document.getElementById('view-renovation').innerText = listing.renovation;
   
   const linkNode = document.getElementById('view-detail-url');
-  let url = listing.detail_url;
-  if (!url || !url.startsWith('http')) {
-    if (listing.id.startsWith('lst-SH')) {
-      url = `https://sh.lianjia.com/zufang/${listing.id.replace('lst-', '')}.html`;
-    } else {
-      url = `https://sh.lianjia.com/zufang/rs${encodeURIComponent(listing.community)}/`;
-    }
-  }
-  linkNode.href = url;
+  linkNode.href = safeListingUrl(listing);
   
   // Editable fields
   document.getElementById('f-layout-comment').value = listing.layout_comment || '';
@@ -1120,8 +1441,8 @@ window.editListing = function(index) {
 // Delete listing function
 window.deleteListing = function(index) {
   if (confirm(`确认要删除 ${listings[index].community} / ${listings[index].unit_id} 吗？`)) {
-    listings.splice(index, 1);
-    saveState();
+    const nextListings = listings.filter((_, currentIndex) => currentIndex !== index);
+    if (!saveState(nextListings, checkedChecklistItems)) return;
     renderDashboard();
     renderCompareMatrix();
     renderReport();
@@ -1229,53 +1550,172 @@ if (copyReportBtn) {
 const checklistSelectorEl = document.getElementById('checklist-selector');
 if (checklistSelectorEl) checklistSelectorEl.addEventListener('change', renderChecklist);
 
-// Data Management: JSON Export
-const exportDataBtn = document.getElementById('btn-export-data');
-if (exportDataBtn) {
-  exportDataBtn.addEventListener('click', () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(listings, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `shanghai_rent_map_backup.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+// Data Management: versioned, explicit local backup and restore.
+const backupExportBtn = document.getElementById('backup-export');
+if (backupExportBtn) {
+  backupExportBtn.addEventListener('click', () => {
+    try {
+      const envelope = RentBackup.createEnvelope(listings, checkedChecklistItems);
+      const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = `shanghai-rent-backup-v${RentBackup.VERSION}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+      setBackupStatus(`只读导出完成：${envelope.listings.length} 条房源，${Object.keys(envelope.checklist).length} 组清单记录。`, 'success');
+    } catch (_) {
+      setBackupStatus('当前数据无法安全导出；本地记录未更改。', 'error');
+    }
   });
 }
 
-// Data Management: JSON Import
-const importFileInputEl = document.getElementById('import-file-input');
-if (importFileInputEl) {
-  importFileInputEl.addEventListener('change', function(e) {
-    const fileReader = new FileReader();
-    
-    if (e.target.files.length === 0) return;
-    
-    fileReader.onload = function(event) {
-      try {
-        const parsedData = JSON.parse(event.target.result);
-        if (Array.isArray(parsedData)) {
-          if (confirm(`检测到 ${parsedData.length} 套房源数据。是否覆盖当前列表？`)) {
-            listings = parsedData;
-            saveState();
-            
-            renderDashboard();
-            renderCompareMatrix();
-            renderReport();
-            renderChecklist();
-            
-            alert('数据覆盖并还原成功！');
-          }
-        } else {
-          alert('文件格式错误！导入的JSON必须是房源数组。');
-        }
-      } catch(err) {
-        alert('解析JSON文件失败，请确认文件是否完整。');
+const backupFileInput = document.getElementById('backup-file');
+const backupPreviewButton = document.getElementById('backup-preview');
+const backupApplyButton = document.getElementById('backup-apply');
+const backupCancelButton = document.getElementById('backup-cancel');
+const backupPreviewResult = document.getElementById('backup-preview-result');
+
+function clearBackupPreview(message = '') {
+  backupPreviewState = null;
+  if (backupPreviewResult) backupPreviewResult.textContent = message;
+  if (backupApplyButton) backupApplyButton.disabled = true;
+  if (backupCancelButton) backupCancelButton.disabled = true;
+  if (backupPreviewButton) backupPreviewButton.disabled = !backupFileInput || !backupFileInput.files || !backupFileInput.files.length;
+}
+
+if (backupFileInput) {
+  backupFileInput.addEventListener('change', () => {
+    backupSelectionToken += 1;
+    clearBackupPreview('所选文件已变化，请重新核对。');
+    setBackupStatus('文件尚未读取或写入。点击“核对所选文件”查看替换范围。');
+  });
+}
+
+if (backupPreviewButton && backupFileInput) {
+  backupPreviewButton.addEventListener('click', async () => {
+    const file = backupFileInput.files && backupFileInput.files[0];
+    if (!file) return;
+    const selectionToken = backupSelectionToken;
+    clearBackupPreview();
+    try {
+      if (file.size > RentBackup.MAX_BYTES) throw Object.assign(new Error('备份文件不能超过 2 MiB'), { code: 'TOO_LARGE' });
+      const rawListings = localStorage.getItem(RentBackup.LISTINGS_KEY);
+      const rawChecklist = localStorage.getItem(RentBackup.CHECKLIST_KEY);
+      const sourceText = await file.text();
+      if (file.size > RentBackup.MAX_BYTES) throw Object.assign(new Error('备份文件不能超过 2 MiB'), { code: 'TOO_LARGE' });
+      if (selectionToken !== backupSelectionToken || !backupFileInput.files || backupFileInput.files[0] !== file) {
+        clearBackupPreview('所选文件已变化，请重新核对。');
+        setBackupStatus('读取期间所选文件发生变化；没有写入，请重新核对。', 'error');
+        return;
       }
-    };
-    
-    fileReader.readAsText(e.target.files[0]);
-    e.target.value = '';
+      const parsed = RentBackup.parseBackup(sourceText);
+      if (parsed.kind === 'legacy' && storageBlocked) {
+        throw Object.assign(new Error('当前清单损坏，旧版文件没有清单；请使用完整备份恢复'), { code: 'LEGACY_BLOCKED' });
+      }
+      backupPreviewState = { file, fileName: file.name, sourceText, rawListings, rawChecklist, parsed };
+      const checklistCount = parsed.kind === 'full' ? Object.keys(parsed.checklist).length : Object.keys(checkedChecklistItems).length;
+      const explanation = parsed.kind === 'legacy'
+        ? `旧版房源数组：将替换 ${parsed.listings.length} 条房源，保留当前 ${checklistCount} 组看房清单（含孤立 ID）。`
+        : `完整 v${RentBackup.VERSION} 备份：将替换 ${parsed.listings.length} 条房源及 ${checklistCount} 组看房清单。`;
+      if (backupPreviewResult) backupPreviewResult.textContent = `文件：${file.name}\n${explanation}\n核对不写入本地数据。再次选择文件或本地数据变化会使此预览失效。`;
+      backupApplyButton.disabled = false;
+      backupCancelButton.disabled = false;
+      backupPreviewButton.disabled = false;
+      setBackupStatus('核对完成。只有点击“应用此备份”才会替换本地记录。');
+    } catch (error) {
+      clearBackupPreview(error && error.message ? error.message : '文件校验失败；本地记录未更改。');
+      setBackupStatus(error && error.message ? error.message : '文件校验失败；本地记录未更改。', 'error');
+    }
+  });
+}
+
+if (backupApplyButton) {
+  backupApplyButton.addEventListener('click', () => {
+    const preview = backupPreviewState;
+    if (!preview) return;
+    try {
+      if (!backupFileInput.files || backupFileInput.files[0] !== preview.file) throw new Error('所选文件已变化，请重新核对。');
+      if (!RentBackup.isSnapshotCurrent(localStorage, preview.rawListings, preview.rawChecklist)) {
+        clearBackupPreview('本地数据在核对后发生变化；请重新核对。');
+        setBackupStatus('本地数据在核对后发生变化；没有写入，请重新核对。', 'error');
+        return;
+      }
+      const candidateChecklist = preview.parsed.kind === 'legacy' ? checkedChecklistItems : preview.parsed.checklist;
+      const saved = RentBackup.persistPair(localStorage, preview.parsed.listings, candidateChecklist, new Date(), {
+        listings: preview.rawListings, checklist: preview.rawChecklist
+      });
+      listings = saved.listings;
+      checkedChecklistItems = saved.checklist;
+      storageBaseline = { listings: saved.rawListings, checklist: saved.rawChecklist };
+      storageBlocked = false;
+      storageBlockReason = '';
+      clearBackupPreview('已应用核对的备份。');
+      if (backupFileInput) backupFileInput.value = '';
+      setBackupStatus(`恢复完成：${listings.length} 条房源和 ${Object.keys(checkedChecklistItems).length} 组清单已保存。`, 'success');
+      renderAllViews();
+    } catch (error) {
+      setBackupStatus(error && error.message ? error.message : '恢复失败；请保留恢复副本并重试。', 'error');
+    }
+  });
+}
+
+if (backupCancelButton) backupCancelButton.addEventListener('click', () => {
+  backupSelectionToken += 1;
+  clearBackupPreview('已取消核对；本地记录未更改。');
+  if (backupFileInput) backupFileInput.value = '';
+  setBackupStatus('已取消核对；本地记录未更改。');
+});
+
+const backupRawDownloadButton = document.getElementById('backup-raw-download');
+if (backupRawDownloadButton) {
+  backupRawDownloadButton.addEventListener('click', () => {
+    try {
+      const recovery = {
+        format: 'opc-rent-raw-recovery', version: 1, exportedAt: new Date().toISOString(),
+        keys: {
+          [RentBackup.LISTINGS_KEY]: localStorage.getItem(RentBackup.LISTINGS_KEY),
+          [RentBackup.CHECKLIST_KEY]: localStorage.getItem(RentBackup.CHECKLIST_KEY),
+          [RentBackup.RECOVERY_KEY]: localStorage.getItem(RentBackup.RECOVERY_KEY)
+        }
+      };
+      const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(recovery, null, 2)], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = 'shanghai-rent-raw-recovery.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+      setBackupStatus('原始恢复文件已下载；本地数据仍保持原样。', 'success');
+    } catch (_) {
+      setBackupStatus('无法读取本地原始记录；没有修改存储。', 'error');
+    }
+  });
+}
+
+const backupPreviousExportButton = document.getElementById('backup-previous-export');
+if (backupPreviousExportButton) {
+  backupPreviousExportButton.addEventListener('click', () => {
+    try {
+      const recovered = RentBackup.recoveryExport(localStorage);
+      const isValid = recovered.kind === 'full';
+      const payload = isValid ? JSON.stringify(recovered.envelope, null, 2) : recovered.value;
+      const blobUrl = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = isValid ? 'shanghai-rent-previous-valid-backup.json' : 'shanghai-rent-previous-raw-recovery.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+      setBackupStatus(isValid
+        ? '上一个有效版本已导出为标准备份；选择该文件后仍需核对并明确应用。'
+        : '上一个恢复副本无法通过完整校验，已按原始字节下载；请勿直接覆盖当前记录。', isValid ? 'success' : 'error');
+    } catch (error) {
+      setBackupStatus(error && error.message ? error.message : '无法读取上一个有效版本。', 'error');
+    }
   });
 }
 
@@ -1284,9 +1724,7 @@ const resetDataBtn = document.getElementById('btn-reset-data');
 if (resetDataBtn) {
   resetDataBtn.addEventListener('click', () => {
     if (confirm('🚨 警告：这会清空本地所有房源数据！确认继续吗？')) {
-      listings = [];
-      checkedChecklistItems = {};
-      saveState();
+      if (!saveState([], {}, { allowCorruptRecovery: true })) return;
       
       renderDashboard();
       renderCompareMatrix();
@@ -1303,9 +1741,7 @@ const loadDefaultsBtn = document.getElementById('btn-load-defaults');
 if (loadDefaultsBtn) {
   loadDefaultsBtn.addEventListener('click', () => {
     if (confirm('这会重置当前列表并重新加载精选默认评测案例。确认继续吗？')) {
-      listings = [...DEFAULT_LISTINGS];
-      checkedChecklistItems = {};
-      saveState();
+      if (!saveState(DEFAULT_LISTINGS.map(item => ({ ...item })), {}, { allowCorruptRecovery: true })) return;
       
       renderDashboard();
       renderCompareMatrix();
@@ -1323,3 +1759,4 @@ renderDashboard();
 renderCompareMatrix();
 renderReport();
 renderChecklist();
+syncBackupRecoveryControls();
